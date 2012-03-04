@@ -1,4 +1,4 @@
-/** WikiaShoutBox v1.12: Conector para el Widget ShoutBox de Wikia
+/** WikiaShoutBox v1.13: Conector para el Widget ShoutBox de Wikia
  * (C) 2011 Jesús Martínez Novo [[User:Ciencia_Al_Poder]]
  * This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -6,7 +6,7 @@
  *   (at your option) any later version
  */
 var WikiaShoutBox = {
-	version: '1.12',
+	version: '1.13',
 	cookietag: 'WSB',
 	skin: 'oasis',
 	wid: '302',
@@ -200,11 +200,17 @@ var WikiaShoutBox = {
 		if (message.charAt(0) == ';') {
 			message = '&#59;'+message.substr(1);
 		}
+		if (message.charAt(0) == '*') {
+			message = '&#42;'+message.substr(1);
+		}
 		if (message.charAt(0) == '=') {
 			message = '&#61;'+message.substr(1);
 		}
 		if (message.indexOf('----') == 0) {
 			message = '&#45;'+message.substr(1);
+		}
+		if (message.charAt(message.length-1) == ':') {
+			message = message.substr(0, message.length-1) + '&#58;';
 		}
 		// URLs
 		var re_url = new RegExp('(\\b('+wgUrlProtocols+')[^\\]\\[<>"\\x00-\\x20\\x7F\\s]+)');
