@@ -119,7 +119,7 @@ window.CreaEnlacesDex = (function () {
 	},
 	// Setea al salir
 	saveOnExit = function () {
-		$(window).bind('unload', setToCookie());
+		$(window).bind('unload', setToCookie);
 	},
 	// Setea en cookie
 	setToCookie = function () {
