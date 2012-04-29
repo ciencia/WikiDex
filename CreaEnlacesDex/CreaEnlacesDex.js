@@ -10,7 +10,7 @@
  *   the Free Software Foundation; either version 2 of the License, or
  *   (at your option) any later version
  */
-window.CreaEnlacesDex = (function () {
+window.CreaEnlacesDex = (function() {
 	var T_POKEMON = 'p',
 	T_MOVIMIENTO = 'm',
 	T_BAYA = 'b',
@@ -22,15 +22,17 @@ window.CreaEnlacesDex = (function () {
 	T_UGN = 'http://www.guiasnintendo.com/',
 	T_UGN3 = T_UGN+'3_GB_GameBoy/',
 	T_UGN1 = T_UGN+'1_GAMEBOY_ADVANCE/',
-	T_VEE = 'http://veekun.com/dex/',
+	T_UVE = 'http://veekun.com/dex/',
 	T_USP = 'http://www.serebii.net/pokedex',
 	T_USA = 'http://www.serebii.net/attackdex',
 	T_ULP = 'http://www.legendarypokemon.net/',
+	T_USM = 'http://www.smogon.com/bw/',
 	T_GN = 'Guías Nintendo',
 	T_PS = 'Pokémon-stats',
 	T_S = 'Serebii',
 	T_L = 'Legendary',
 	T_LP = 'Legendary Pokémon: ',
+	T_SM = 'Smogon',
 	SHTML = '.shtml',
 	PHP = '.php',
 	_generaciones = ['Primera', 'Segunda', 'Tercera', 'Cuarta', 'Quinta'],
@@ -56,7 +58,7 @@ window.CreaEnlacesDex = (function () {
 	_rendered = false,
 	// ** Funciones **
 	// Inicio
-	init = function () {
+	init = function() {
 		if(getFromPage()||getFromCookie()) {
 			saveOnExit();
 			if (_vars.tipo === T_POKEMON) genPoke();
@@ -67,7 +69,7 @@ window.CreaEnlacesDex = (function () {
 	},
 	// Obtener guardado de cookie
 	// formato: "tipo:p|nombre:asdf|num:000|hoenn:000"
-	getFromCookie = function () {
+	getFromCookie = function() {
 		var cookieStr = $.cookies.get(_cookieTag);
 		if (!cookieStr) {
 			return false;
@@ -82,7 +84,7 @@ window.CreaEnlacesDex = (function () {
 		return (_vars.nombreArt === window.wgPageName);
 	},
 	// Obtener de la página
-	getFromPage = function () {
+	getFromPage = function() {
 		var eNombrePoke = $('#nombrepokemon'),
 			eNumNacional = $('#numeronacional'),
 			eNombreMov = $('#nombremovimiento'),
@@ -118,11 +120,11 @@ window.CreaEnlacesDex = (function () {
 		return false;
 	},
 	// Setea al salir
-	saveOnExit = function () {
+	saveOnExit = function() {
 		$(window).bind('unload', setToCookie);
 	},
 	// Setea en cookie
-	setToCookie = function () {
+	setToCookie = function() {
 		var sz = [];
 		for (var elem in _vars) {
 			if (_vars[elem]) sz.push(elem, ':', _vars[elem], '|');
@@ -138,7 +140,12 @@ window.CreaEnlacesDex = (function () {
 		sz.push(item);
 		return sz.join('');
 	},
-	genPoke = function () {
+	toCamel = function(text) {
+		return text.replace(new RegExp('\\b(\\w)', 'g'), function(s, p) {
+			return p.toUpperCase();
+		});
+	},
+	genPoke = function() {
 		var m = _vars.nombre,
 			n = _vars.num,
 			sn = n.toString(),
@@ -176,34 +183,38 @@ window.CreaEnlacesDex = (function () {
 		link('http://en.wikipedia.org/wiki/'+m,'Wikipedia [en]','Wikipedia'+T_EN);
 		link('http://pokemon.wikia.com/wiki/'+m,'TPE [en]','The Pokemon Encyclopedia'+T_EN);
 		link(T_UBP+m+'_(Pokémon)', 'Bulbapedia [en]','Bulbapedia'+T_EN);
-		link(T_VEE+'pokemon/'+m.toLowerCase(),'Veekun [en]','Veekun'+T_EN);
+		link(T_UVE+'pokemon/'+m.toLowerCase(),'Veekun [en]','Veekun'+T_EN);
 		n && n <= 386 && link(T_ULP+'rs/pokedex/'+m,T_L+' 3Gen [en]',T_LP+'3ª'+T_G+T_EN);
 		n && n <= 493 && link(T_ULP+'dp/pokedex/'+m,T_L+' 4Gen [en]',T_LP+'4ª'+T_G+T_EN);
 		n && n <= 251 && link(T_USP+'/'+zPadLeft(sn,3)+SHTML,T_S+' 1-2Gen [en]',T_S+': 1ª y 2ª'+T_G+T_EN);
 		n && n <= 386 && link(T_USP+'-rs/'+zPadLeft(sn,3)+SHTML,T_S+' 3Gen [en]',T_S+': 3ª'+T_G+T_EN);
 		n && n <= 493 && link(T_USP+'-dp/'+zPadLeft(sn,3)+SHTML,T_S+' 4Gen [en]',T_S+': 4ª'+T_G+T_EN);
 		n && n <= 649 && link(T_USP+'-bw/'+zPadLeft(sn,3)+SHTML,T_S+' 5Gen [en]',T_S+': 5ª'+T_G+T_EN);
+		link(T_USM+'pokemon/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'_').replace(new RegExp('[.\']', 'g'), ''),T_SM+' [en]',T_SM+': 5ª'+T_G+T_EN);
 	},
-	genMov = function () {
+	genMov = function() {
 		var m = _vars.nombre,
 			i = (_vars.ingles || 0),
 			g = (parseInt(_vars.generacion, 10) || 1);
-		i && g <= 5 && link(T_UBP+i.replace(new RegExp('\\b(\\w)', 'g'), function(s,p){return p.toUpperCase();})+'_(move)','Bulbapedia [en]','Bulbapedia'+T_EN);
-		i && g <= 5 && link(T_VEE+'moves/'+i.toLowerCase(),'Veekun [en]','Veekun'+T_EN);
+		i && g <= 5 && link(T_UBP+toCamel(i)+'_(move)','Bulbapedia [en]','Bulbapedia'+T_EN);
+		i && g <= 5 && link(T_UVE+'moves/'+i.toLowerCase(),'Veekun [en]','Veekun'+T_EN);
 		i && g <= 3 && link(T_ULP+'rs/attacks/'+i,T_L+' 3Gen [en]',T_LP+'3ª'+T_G+T_EN);
 		i && g <= 4 && link(T_ULP+'dp/attacks/'+i,T_L+' 4Gen [en]',T_LP+'4ª'+T_G+T_EN);
 		i && g <= 3 && link(T_USA+'/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 3Gen [en]',T_S+': 3ª'+T_G+T_EN);
 		i && g <= 4 && link(T_USA+'-dp/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 4Gen [en]',T_S+': 4ª'+T_G+T_EN);
 		i && g <= 5 && link(T_USA+'-bw/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 5Gen [en]',T_S+': 5ª'+T_G+T_EN);
-		i && g <= 4 && link('http://www.smogon.com/dp/moves/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'_'),'Smogon 4Gen [en]','Smogon: 4ª'+T_G+T_EN);
+		i && g <= 5 && link(T_USM+'moves/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'_'),T_SM+' 4Gen [en]',T_SM+': 4ª'+T_G+T_EN);
 	},
-	genBaya = function () {
-		var n = _vars.num,
+	genBaya = function() {
+		var i = _vars.ingles,
+			n = _vars.num,
 			sn = n.toString();
 		link('http://www.pokexperto.net/index2.php?seccion=nds/berrydexDS&baya='+sn, 'Pokexperto 4Gen', 'Pokexperto: 4ª'+T_G);
-		link(T_VEE+'items/berries/'+_vars.ingles.toLowerCase(),'Veekun [en]','Veekun'+T_EN);
+		link(T_UBP+toCamel(i),'Bulbapedia [en]','Bulbapedia'+T_EN);
+		link(T_UVE+'items/berries/'+i.toLowerCase(),'Veekun [en]','Veekun'+T_EN);
 		link(T_ULP+'berrydex?berry='+sn,T_L+' 4Gen [en]',T_LP+'4ª'+T_G+T_EN);
 		link('http://www.serebii.net/berrydex-dp/'+zPadLeft(sn,2)+SHTML,T_S+' 4Gen [en]',T_S+': 4ª'+T_G+T_EN);
+		link(T_USM+'items/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'_'),T_SM+' [en]',T_SM+T_EN);
 	},
 	link = function(url, text, caption) {
 		if (!_rendered && _renderFn) {
