@@ -213,7 +213,7 @@ window.CreaEnlacesDex = (function () {
 		if (_rendered && _renderLink) {
 			_renderLink(url, text, caption);
 		}
-	}
+	},
 	registerRenderFn = function(fn) {
 		if (typeof fn === 'function') {
 			_renderFn = fn;
