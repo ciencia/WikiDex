@@ -86,7 +86,7 @@ window.CreaEnlacesDex = (function () {
 		var eNombrePoke = $('#nombrepokemon'),
 			eNumNacional = $('#numeronacional'),
 			eNombreMov = $('#nombremovimiento'),
-			eNumBaya = $('#numbaya'), n;
+			eNumBaya = $('#numerobaya'), n;
 		_vars.nombreArt = window.wgPageName;
 		if ( eNombrePoke.exists() && eNumNacional.exists() ) {
 			_vars.tipo = T_POKEMON;
