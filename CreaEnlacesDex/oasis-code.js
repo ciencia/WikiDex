@@ -1,9 +1,9 @@
 if (window.CreaEnlacesDex) {
 	CreaEnlacesDex.registerRenderFn(function() {
-		$('#p-tb').after('<div class="portlet" id="p-dexlinks"><h5>Otras Pokédex</h5><div class="pBody"><ul></ul></div></div>');
+		$('#WikiaRail').append('<section class="dexlinks module" id="p-dexlinks"><h1>Otras Pokédex</h1><ul></ul></section>');
 	});
 	CreaEnlacesDex.registerLinkFn(function(url, text, caption) {
-		addPortletLink('p-dexlinks', url, text, false, caption);
+		$('#p-dexlinks').find('ul').eq(0).append($('<li></li>').append($('<a class="external"></a>').attr({href:url, title:caption}).text(text)));
 	});
 	$(CreaEnlacesDex.init);
 }
