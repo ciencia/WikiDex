@@ -102,7 +102,7 @@ window.CreaEnlacesDex = (function() {
 			_vars.tipo = T_MOVIMIENTO;
 			_vars.nombre = $.trim(eNombreMov.text());
 			_vars.ingles = $.trim($('#nombreingles').text());
-			for (var i = 0, gentxt = $.trim(eGen.text()); i < _generaciones.length; i++) {
+			for (var i = 0, gentxt = $.trim($('#generacion').text()); i < _generaciones.length; i++) {
 				if (_generaciones[i] === gentxt) {
 					_vars.generacion = i+1;
 					break;
