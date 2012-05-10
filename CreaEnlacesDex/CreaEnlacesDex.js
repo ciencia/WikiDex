@@ -190,7 +190,7 @@ window.CreaEnlacesDex = (function() {
 		n && n <= 386 && link(T_USP+'-rs/'+zPadLeft(sn,3)+SHTML,T_S+' 3Gen [en]',T_S+': 3ª'+T_G+T_EN);
 		n && n <= 493 && link(T_USP+'-dp/'+zPadLeft(sn,3)+SHTML,T_S+' 4Gen [en]',T_S+': 4ª'+T_G+T_EN);
 		n && n <= 649 && link(T_USP+'-bw/'+zPadLeft(sn,3)+SHTML,T_S+' 5Gen [en]',T_S+': 5ª'+T_G+T_EN);
-		link(T_USM+'pokemon/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'_').replace(new RegExp('[.\']', 'g'), ''),T_SM+' [en]',T_SM+': 5ª'+T_G+T_EN);
+		link(T_USM+'pokemon/'+m.toLowerCase().replace(new RegExp('\\s', 'g'),'_').replace(new RegExp('[.\']', 'g'), ''),T_SM+' [en]',T_SM+': 5ª'+T_G+T_EN);
 	},
 	genMov = function() {
 		var m = _vars.nombre,
