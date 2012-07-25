@@ -1,119 +1,161 @@
 /* <pre>
- * Thickbox4MediaWiki v2.1 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
- * Copyright (c) 2010 Jesús Martínez (User:Ciencia_Al_Poder), Original Thickbox Copyright (c) 2007 Cody Lindley
+ * Thickbox4MediaWiki v3.0 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
+ * Copyright (c) 2010 - 2011 Jesús Martínez (User:Ciencia_Al_Poder), Original Thickbox Copyright (c) 2007 Cody Lindley
  * Licensed under the MIT License: http://www.opensource.org/licenses/mit-license.php
 */
-var Thickbox = {
-	version: '2.1',
+var Thickbox = (function() {
+	var _version = '3.0',
 	// Dimensiones mínimas
-	minWidth: 210,
+	_minWidth = 210,
 	// Margen entre la imagen y el borde de ThickBox
-	imageMarginWidth: 15,
+	_imageMarginWidth = 15,
 	// Margen mínimo hasta el borde de la ventana. Si se supera la imagen se reducirá
-	minMarginWidth: 30,
-	minMarginHeight: 15,
+	_minMarginWidth = 30,
+	_minMarginHeight = 15,
+	// Tiempo de espera para la aparición del loader en ms
+	_loaderWait = 0,
 	// Internos
-	imgPreloader: null,
-	galleryData: null,
-	galleryIndex: -1,
-	width: null,
-	height: null,
-	getCaption: null,
-	xhr: null,
-	imgTip: null,
-	imgTipTarget: null,
-	imgTipVisible: false,
-	init: function() {
+	_imgPreloader = null,
+	_galleryData = null,
+	_galleryIndex = -1,
+	_width = null,
+	_height = null,
+	_getCaption = null,
+	_xhr = null,
+	_imgTip = null,
+	_imgTipTarget = null,
+	_imgTipVisible = false,
+	_loaderPresent = false,
+	_loaderTm = null,
+	_events = {},
+	_logger = null,
+	_tbKind = {NONE: 0, IMAGE: 1, ELEMENT: 2, DIALOG: 3},
+	_loaded = false,
+	// Funciones privadas
+	_init = function() {
 		// Se podría haber puesto un evento directamente en cada 'a.image', pero esto es mucho más rápido y eficiente (tarda solo el 20% en FF2) que recorrerse todo el DOM
-		$('#'+(window.bodyContentId||'bodyContent')).bind('click.thickbox', Thickbox.triggerEvent).bind('mouseover.thickbox_imgtip', Thickbox.imgTipEvent);
+		$('#'+(window.bodyContentId||'bodyContent')).unbind('click.thickbox').bind('click.thickbox', _triggerEvent).unbind('mouseover.thickbox_imgtip').bind('mouseover.thickbox_imgtip', _imgTipEvent);
 	},
-	triggerEvent: function(e) {
+	_triggerEvent = function(e) {
+		// Si hay alguna tecla especial pulsada, salimos
 		if (e.ctrlKey || e.altKey || e.shiftKey) {
 			return true;
 		}
 		var target = e.target;
-		if (Thickbox.isTag(target,'img')) { // Gallery o thumb
+		if (_isTag(target,'img')) { // Gallery o thumb
 			var a = target.parentNode;
-			if (!a || !Thickbox.isTag(a,'a') || !Thickbox.isClass(a,'image')) {
+			if (!a || !_isTag(a,'a') || !_isClass(a,'image')) {
 				return true;
 			}
-			if (Thickbox.isClass(target,'thumbimage')) {
+			if (_isClass(target,'thumbimage')) {
 				// Es thumb
 				a.blur();
-				Thickbox.getCaption = Thickbox.getCaptionThumb;
-				Thickbox.showImage(a);
+				_getCaption = _getCaptionThumb;
+				_showImage(a);
 				return false;
 			}
 			// Galería Wikia 2
-			if (Thickbox.isClass(a,'lightbox')) {
+			if (_isClass(a,'lightbox')) {
 				target.blur();
-				Thickbox.getCaption = Thickbox.getCaptionWikia;
-				Thickbox.galleryData = $(target).parents('div.wikia-gallery').children('span.wikia-gallery-item').children('div.thumb').children('div.gallery-image-wrapper').children('a.lightbox');
-				if (Thickbox.galleryData.length == 0) {
-					Thickbox.galleryData = $(target).parents('div.wikia-gallery').children('div.wikia-gallery-row').children('span.wikia-gallery-item').children('div.thumb').children('div.gallery-image-wrapper').children('a.lightbox');
+				_getCaption = _getCaptionWikia;
+				_galleryData = $(target).parents('div.wikia-gallery').children('span.wikia-gallery-item').children('div.thumb').children('div.gallery-image-wrapper').children('a.lightbox');
+				if (_galleryData.length == 0) {
+					_galleryData = $(target).parents('div.wikia-gallery').children('div.wikia-gallery-row').children('span.wikia-gallery-item').children('div.thumb').children('div.gallery-image-wrapper').children('a.lightbox');
 				}
-				if (Thickbox.galleryData.length == 0) {
+				if (_galleryData.length == 0) {
 					return true;
 				}
-				Thickbox.galleryIndex = Thickbox.galleryData.index(a);
-				Thickbox.showImage(a);
+				_galleryIndex = _galleryData.index(a);
+				_showImage(a);
 				return false;
 			}
 			var gb = a.parentNode.parentNode.parentNode;
 			// MediaWiki gallery
-			if (Thickbox.isTag(gb,'div') && Thickbox.isClass(gb,'gallerybox') && Thickbox.isTag(gb.parentNode,'td')) {
+			if (_isTag(gb,'div') && _isClass(gb,'gallerybox') && _isTag(gb.parentNode,'td')) {
 				var t = gb.parentNode.parentNode.parentNode.parentNode;
-				if (Thickbox.isTag(t,'table') && Thickbox.isClass(t,'gallery')) {
+				if (_isTag(t,'table') && _isClass(t,'gallery')) {
 					a.blur();
-					Thickbox.getCaption = Thickbox.getCaptionMW;
-					Thickbox.galleryData = $(t).find('div.gallerybox').children('div.thumb').find('a.image');
-					Thickbox.galleryIndex = Thickbox.galleryData.index(a);
-					Thickbox.showImage(a);
+					_getCaption = _getCaptionMW;
+					_galleryData = $(t).find('div.gallerybox').children('div.thumb').find('a.image');
+					_galleryIndex = _galleryData.index(a);
+					_showImage(a);
 					return false;
 				}
 			}
 			// Es thumb genérico
 			a.blur();
-			Thickbox.getCaption = Thickbox.getCaptionEmpty;
-			Thickbox.showImage(a);
+			_getCaption = _getCaptionEmpty;
+			_showImage(a);
 			return false;
-		} else if (Thickbox.isTag(target,'a')) {
+		} else if (_isTag(target,'a')) {
 			var sup = target.parentNode;
-			if (!Thickbox.isTag(sup,'sup') || !Thickbox.isClass(sup,'reference')) {
+			if (!_isTag(sup,'sup') || !_isClass(sup,'reference')) {
 				return true;
 			}
 			target.blur();
-			Thickbox.showElement(target);
+			_showElement(target);
 			return false;
 		}
 		return true;
 	},
 	// Helper and speedy functions
-	isClass: function(el, cn) {
+	_isClass = function(el, cn) {
 		return ((' '+el.className+' ').indexOf(' '+cn+' ') != -1);
 	},
-	isTag: function(el, tn) {
+	_isTag = function(el, tn) {
 		return (el.tagName.toLowerCase() == tn);
 	},
+	_startLoader = function() {
+		if (_loaderPresent || _loaderTm) {
+			return;
+		}
+		if (_loaderWait == 0) {
+			_displayLoader();
+		} else {
+			setTimeout(_displayLoader, _loaderWait);
+		}
+	},
+	_stopLoader = function() {
+		var t = _loaderTm;
+		_loaderTm = null;
+		if (t) {
+			clearTimeout(t);
+		}
+		if (_loaderPresent) {
+			$('#TB_load').remove();
+			_loaderPresent = false;
+		}
+	},
+	_displayLoader = function() {
+		_loaderPresent = true;
+		var t = _loaderTm;
+		_loaderTm = null;
+		if (t) {
+			clearTimeout(t);
+		}
+		$(document.body).append('<div id="TB_load"></div>');
+	},
 	// Main functions
-	preload: function() {
+	_preload = function() {
 		$(document.body).addClass('thickbox_loaded');
-		if (Thickbox.xhr) {
-			Thickbox.xhr.abort();
-			Thickbox.xhr = null;
+		if (_xhr) {
+			_xhr.abort();
+			_xhr = null;
 		}
 		$('#TB_overlay').add('#TB_window').add('#TB_load').remove();
-		$('#positioned_elements').append('<div id="TB_overlay"></div><div id="TB_window" class="fixedpos"></div><div id="TB_load"></div>');
-		$('#TB_overlay').click(Thickbox.remove);
-		$('#TB_load').show();//show loader
+		//$('#positioned_elements').append('<div id="TB_overlay"></div><div id="TB_window" class="fixedpos"></div><div id="TB_load"></div>');
+		$(document.body).append('<div id="TB_overlay"></div><div id="TB_window" class="fixedpos"></div>');
+		$('#TB_overlay').click(_remove);
+		_startLoader();
 	},
-	showImage: function(elem) {
+	_showImage = function(elem) {
 		try {
-			Thickbox.preload();
+			_tbLoaded = _tbKind.IMAGE;
+			_preload();
 			elem = $(elem);
 
 			var url = elem.children('img').eq(0).attr('src');
-			url = Thickbox.getUrlFromThumb(url);
+			url = _getUrlFromThumb(url);
 
 			var TB_secondLine = '';
 			var descUrl = elem.attr('href');
@@ -123,74 +165,75 @@ var Thickbox = {
 			}
 			var TB_descLink = '<a id="TB_descLink" class="sprite details" href="' + descUrl + '" title="Ir a la página de descripción de la imagen"></a>';
 			// Se trata de un gallery?
-			if (Thickbox.galleryIndex != -1) {
+			if (_galleryIndex != -1) {
 				TB_secondLine = '<div id="TB_secondLine">'+
 					'<span id="TB_imageCount"></span>'+
 					'<span id="TB_prev"><a href="#" title="Ver imagen anterior [A]">&lt; Ant.</a></span>'+
 					'<span id="TB_next"><a href="#" title="Ver imagen siguiente [S]">Sig. &gt;</a></span></div>';
 			}
 			$('#TB_window').append('<div id="TB_closeWindow"><a href="#" id="TB_closeWindowButton" title="Cerrar [ESC]">cerrar</a></div><div id="TB_ImageOff"><img id="TB_Image" alt="Imagen" title="Cerrar" />' + TB_descLink + '</div>' + TB_secondLine + '<div id="TB_caption"></div>');
-			if (Thickbox.galleryIndex != -1) {
-				Thickbox.updateNavigation();
+			if (_galleryIndex != -1) {
+				_updateNavigation();
 			}
-			$('#TB_caption').html(Thickbox.getCaption(elem));
+			$('#TB_caption').html(_getCaption(elem));
 
-			$('#TB_Image').add('#TB_closeWindowButton').click(Thickbox.remove);
-			$(document).bind('keyup.thickbox', Thickbox.keyListener);
-			$('#TB_prev').add('#TB_next').click(Thickbox.navigate);
+			$('#TB_Image').add('#TB_closeWindowButton').click(_remove);
+			$(document).bind('keyup.thickbox', _keyListener);
+			$('#TB_prev').add('#TB_next').click(_navigate);
 			$('#TB_ImageOff').bind('mouseover', function() {$('#TB_descLink').css('display','block');}).bind('mouseout', function() {$('#TB_descLink').css('display','none');});
 
-			if (Thickbox.imgPreloader === null) {
-				Thickbox.imgPreloader = new Image();
+			if (_imgPreloader === null) {
+				_imgPreloader = new Image();
 			}
-			Thickbox.imgPreloader.onload = Thickbox.imageLoaded;
-			Thickbox.imgPreloader.onerror = Thickbox.imageError;
-			Thickbox.imgPreloader.src = url;
+			_imgPreloader.onload = _imageLoaded;
+			_imgPreloader.onerror = _imageError;
+			_imgPreloader.src = url;
 
 		} catch(e) {
-			Thickbox.error = e;
+			_log(e);
 		}
 	},
-	showElement: function(target) {
+	_showElement = function(target) {
 		try {
-			var url = target.href;
-			if (url.indexOf('#') == -1) {
+			var url = target.href, idx = url.indexOf('#');
+			if (idx == -1) {
 				return false;
 			}
-			var baseurl = url.split('#')[0];
-			var hash = url.split('#')[1];
-			// Comprobamos que la URL sea del mismo documento
-			var locbase = document.location.href.replace(baseurl, '');
-			var rel = document.getElementById(hash);
+			var baseurl = url.substr(0, idx),
+				hash = url.substr(idx + 1),
+				// Comprobamos que la URL sea del mismo documento
+				locbase = document.location.href.replace(baseurl, ''),
+				rel = document.getElementById(hash);
 			if ((locbase != '' && locbase.indexOf('#') != 0) || rel === null) {
 				return false;
 			}
-			var inlineEl = $(rel);
 
+			_tbLoaded = _tbKind.ELEMENT;
 			$('#TB_overlay').add('#TB_window').remove();
-			$('#positioned_elements').append('<div id="TB_overlay" class="transparent"></div><div id="TB_window"></div>');
-			$('#TB_overlay').click(Thickbox.remove);
+			//$('#positioned_elements').append('<div id="TB_overlay" class="transparent"></div><div id="TB_window"></div>');
+			$(document.body).append('<div id="TB_overlay" class="transparent"></div><div id="TB_window"></div>');
+			$('#TB_overlay').click(_remove);
 
-			var titleHTML = '<div id="TB_title"><div id="TB_closeAjaxWindow"><a href="#" id="TB_closeWindowButton" title="Cerrar [ESC]">cerrar</a></div></div>';
-			var wnd = $('#TB_window');
-			var cel = inlineEl.clone();
+			var titleHTML = '<div id="TB_title"><div id="TB_closeAjaxWindow"><a href="#" id="TB_closeWindowButton" title="Cerrar [ESC]">cerrar</a></div></div>',
+				wnd = $('#TB_window'),
+				cel = $(rel).clone();
 			cel.contents().eq(0).remove();
 			cel.children('sup').remove();
-			wnd.width(Thickbox.minWidth).append(titleHTML+'<div id="TB_ajaxContent">'+cel.html()+'</div>');
+			wnd.width(_minWidth).append(titleHTML+'<div id="TB_ajaxContent">'+cel.html()+'</div>');
 
-			var tgEl = $(target);
-			// espacio horizontal a cada lado del elemento
-			var elOffset = tgEl.offset();
-			var lw = elOffset.left;
-			var rw = $(document).width() - elOffset.left - tgEl.width();
-			// Calculamos las dimensiones óptimas. Calculamos el área y determinamos que lo ideal es proporción 3/2
-			var prefw = parseInt(Math.sqrt(wnd.width()*wnd.height()*3/2),10);
-			// Corrección de ancho mínimo en caso de producirse scroll
-			var cd = $('#TB_ajaxContent')[0];
+			var tgEl = $(target),
+				// espacio horizontal a cada lado del elemento
+				elOffset = tgEl.offset(),
+				lw = elOffset.left,
+				rw = $(document).width() - elOffset.left - tgEl.width(),
+				// Calculamos las dimensiones óptimas. Calculamos el área y determinamos que lo ideal es proporción 3/2
+				prefw = parseInt(Math.sqrt(wnd.width()*wnd.height()*3/2),10),
+				// Corrección de ancho mínimo en caso de producirse scroll
+				cd = $('#TB_ajaxContent')[0];
 			prefw += cd.scrollWidth-cd.clientWidth;
 			// No se debe reducir el ancho mínimo
-			if (prefw < Thickbox.minWidth) {
-				prefw = Thickbox.minWidth;
+			if (prefw < _minWidth) {
+				prefw = _minWidth;
 			}
 			// Posición. 5px de margen respecto el origen. Situación ideal: a la derecha del elemento
 			var margen = 5, left = $(document).width() - rw + margen;
@@ -219,39 +262,41 @@ var Thickbox = {
 				$('html,body').animate({scrollTop: top-margen}, 250, 'swing');
 			}
 
-			$('#TB_closeWindowButton').click(Thickbox.remove);
-			$(document).bind('keyup.thickbox', Thickbox.keyListener);
+			$('#TB_closeWindowButton').click(_remove);
+			$(document).bind('keyup.thickbox', _keyListener);
 		} catch(e) {
-			Thickbox.error = e;
+			_log(e);
 		}
 	},
-	showPage: function(page, width) {
+	_showPage = function(page, width) {
 		try {
-			Thickbox.preload();
-			Thickbox.xhr = $.getJSON(wgScriptPath+'/api.php?action=parse&page='+encodeURIComponent(page)+'&prop=text&format=json', function(width) {
+			_tbLoaded = _tbKind.DIALOG;
+			_preload();
+			_xhr = $.getJSON(wgScriptPath+'/api.php?action=parse&page='+encodeURIComponent(page)+'&prop=text&format=json', function(width) {
 				return function(data) {
-					Thickbox.xhr = null;
-					Thickbox.showDialog(data.parse.text['*'], {width: (width||$(document).width()*0.75)});
+					_xhr = null;
+					_showDialog(data.parse.text['*'], {width: (width||$(document).width()*0.75)});
 				};
 			}(width));
 		} catch(e) {
-			Thickbox.error = e;
+			_log(e);
 		}
 	},
-	showDialog: function(content, options) {
+	_showDialog = function(content, options) {
 		try {
+			_tbLoaded = _tbKind.DIALOG;
 			options = (options || {});
 			var w = $('#TB_window'),
 				width = (options.width || 500),
 				texts = (options.texts || {});
 			if (!$('#TB_ajaxContent').exists()) {
-				Thickbox.preload();
+				_preload();
 				w = $('#TB_window').width(width).append('<div id="TB_title"><div id="TB_closeAjaxWindow"><a href="#" id="TB_closeWindowButton" title="Cerrar [ESC]">cerrar</a></div></div><div id="TB_ajaxContent">'+content+'</div>')
 					.bind('unload', function() {
 						$('#TB_window').find('input').unbind();
 					});
-				$('#TB_closeWindowButton').click(Thickbox.remove);
-				$(document).bind('keyup.thickbox', Thickbox.keyListener);
+				$('#TB_closeWindowButton').click(_remove);
+				$(document).bind('keyup.thickbox', _keyListener);
 			} else {
 				w.width(width);
 				$('#TB_ajaxContent').html(content);
@@ -261,68 +306,70 @@ var Thickbox = {
 					ac.find('[data-text="'+elid+'"]').text(texts[elid]).removeAttr('data-text');
 				}
 			}
-			var h = w.height(), mh = $(window).height() - (Thickbox.minMarginHeight*2), ac = $('#TB_ajaxContent');
+			var h = w.height(), mh = $(window).height() - (_minMarginHeight*2), ac = $('#TB_ajaxContent');
 			if (h > mh) {
 				ac.height(mh - h + ac.height());
 			}
-			Thickbox.width = width;
-			Thickbox.height = w.height();
-			Thickbox.position();
-			Thickbox.displayClean();
+			_width = width;
+			_height = w.height();
+			_position();
+			_displayClean();
 		} catch(e) {
-			Thickbox.error = e;
+			_log(e);
 		}
 	},
 	//helper functions below
-	displayClean: function() {
-		$('#TB_load').remove();
+	_displayClean = function() {
+		_stopLoader();
 		$('#TB_window').css('visibility','visible');
 	},
-	remove: function() {
+	_remove = function() {
 		$(document).unbind('keyup.thickbox');
-		Thickbox.galleryData = null;
-		Thickbox.galleryIndex = -1;
-		if (Thickbox.imgPreloader !== null) {
-			Thickbox.imgPreloader.onload = null;
-			Thickbox.imgPreloader.onerror = null;
+		_galleryData = null;
+		_galleryIndex = -1;
+		if (_imgPreloader !== null) {
+			_imgPreloader.onload = null;
+			_imgPreloader.onerror = null;
 		}
 		$('#TB_ImageOff').add('#TB_Image').add('#TB_closeWindowButton').add('#TB_prev').add('#TB_next').unbind();
 		$('#TB_window').add('#TB_Image').queue('fx',[]).stop();
-		$('#TB_window').trigger('unload').fadeOut('fast',function(){$('#TB_window').add('#TB_overlay').unbind().remove();});
-		$('#TB_load').remove();
+		_trigger('unload');
+		_clearEvents('unload');
+		$('#TB_window').fadeOut('fast',function(){$('#TB_window').add('#TB_overlay').unbind().remove();});
+		_stopLoader();
 		$(document.body).removeClass('thickbox_loaded');
 		return false;
 	},
-	keyListener: function(e) {
+	_keyListener = function(e) {
 		var keycode = e.which;
 		if(keycode == 27) { // close
-			Thickbox.remove();
+			_remove();
 		} else if(keycode == 65) { // 'A' display previous image
 			$('#TB_prev').click();
 		} else if(keycode == 83) { // 'S' display next image
 			$('#TB_next').click();
 		}
 	},
-	position: function(anim) {
+	_position = function(anim) {
 		// Ancho mínimo
 		var border = 4;
-		if (Thickbox.width < Thickbox.minWidth) {
-			Thickbox.width = Thickbox.minWidth;
+		if (_width < _minWidth) {
+			_width = _minWidth;
 		}
-		var o = {marginLeft: '-' + parseInt((Thickbox.width / 2)+border,10).toString() + 'px', width: Thickbox.width + 'px', marginTop: '-' + parseInt((Thickbox.height / 2)+border,10).toString() + 'px'};
+		var o = {marginLeft: '-' + parseInt((_width / 2)+border,10).toString() + 'px', width: _width + 'px', marginTop: '-' + parseInt((_height / 2)+border,10).toString() + 'px'};
 		if (anim) {
 			$('#TB_window').animate(o, {queue: false, duration: 'fast'});
 		} else {
 			$('#TB_window').css(o);
 		}
 	},
-	getPageSize: function() {
-		var de = document.documentElement;
-		var w = window.innerWidth || (de&&de.clientWidth) || document.body.clientWidth;
-		var h = window.innerHeight || (de&&de.clientHeight) || document.body.clientHeight;
+	_getPageSize = function() {
+		var de = document.documentElement,
+			w = window.innerWidth || (de&&de.clientWidth) || document.body.clientWidth,
+			h = window.innerHeight || (de&&de.clientHeight) || document.body.clientHeight;
 		return [w,h];
 	},
-	getUrlFromThumb: function(thumb) {
+	_getUrlFromThumb = function(thumb) {
 		// Si la imagen no es thumb, o bien es un SVG, usamos la imagen tal cual.
 		if (thumb.indexOf('/thumb/') == -1 || thumb.indexOf('.svg/') != -1 ) {
 			return thumb;
@@ -330,33 +377,32 @@ var Thickbox = {
 		var urlparts = thumb.split('/');
 		return thumb.replace('/thumb/','/').replace('/'+urlparts[urlparts.length-1], '');
 	},
-	getCaptionThumb: function(elem) {
+	_getCaptionThumb = function(elem) {
 		return elem.parents('div.thumbinner').children('div.thumbcaption').clone().children('div.magnify').remove().end().html();
 	},
-	getCaptionEmpty: function(elem) {
+	_getCaptionEmpty = function(elem) {
 		return $('<div></div>').text((elem.attr('title')||'')).html();
 	},
-	getCaptionMW: function(gitem) {
+	_getCaptionMW = function(gitem) {
 		return gitem.parents('div.gallerybox').eq(0).children('div.gallerytext').eq(0).html();
 	},
-	getCaptionWikia: function(gitem) {
+	_getCaptionWikia = function(gitem) {
 		return gitem.parents('span.wikia-gallery-item').eq(0).children('div.lightbox-caption').eq(0).html();
 	},
-	imageError: function() {
+	_imageError = function() {
 	},
-	imageLoaded: function() {
+	_imageLoaded = function() {
 
-		var navigation = (Thickbox.galleryIndex != -1);
-		var img = $('#TB_Image');
-		var wndH = $('#TB_window').height();
-
-		// Resizing large images - orginal by Christian Montoya edited by me.
-		var pagesize = Thickbox.getPageSize();
-		// Dimensiones máximas
-		var x = pagesize[0] - Thickbox.minMarginWidth * 2 - Thickbox.imageMarginWidth * 2;
-		var y = pagesize[1] - Thickbox.minMarginHeight * 2 - wndH + img.height();
-		var imageWidth = Thickbox.imgPreloader.width;
-		var imageHeight = Thickbox.imgPreloader.height;
+		var navigation = (_galleryIndex != -1),
+			img = $('#TB_Image'),
+			wndH = $('#TB_window').height(),
+			// Resizing large images - orginal by Christian Montoya edited by me.
+			pagesize = _getPageSize(),
+			// Dimensiones máximas
+			x = pagesize[0] - _minMarginWidth * 2 - _imageMarginWidth * 2,
+			y = pagesize[1] - _minMarginHeight * 2 - wndH + img.height(),
+			imageWidth = _imgPreloader.width,
+			imageHeight = _imgPreloader.height;
 		// Puede entrar por una o por las dos. De hecho, con esta comprobación basta, ya que si tiene que pasar por las dos da igual por qué lado se reduzca primero
 		if (imageWidth > x) {
 			imageHeight = imageHeight * (x / imageWidth);
@@ -368,14 +414,14 @@ var Thickbox = {
 		}
 		// End Resizing
 
-		var firstNav = (!img.attr('src') || img.attr('src') == '');
+		var firstNav = (img.attr('src') || '') == '';
 
 		// Dimensiones de la ventana Thickbox para posicionar
-		Thickbox.width = imageWidth + Thickbox.imageMarginWidth * 2; // 15px de espacio en cada lado
+		_width = imageWidth + _imageMarginWidth * 2; // 15px de espacio en cada lado
 		// La altura de la ventana la conocemos. Solo hay que reemplazar la imagen antigua y poner la nueva, esto es, sus dimensiones. El height se tiene que hacer diferente porque intervienen más elementos que en el ancho
-		Thickbox.height = wndH - img.height() + imageHeight;
+		_height = wndH - img.height() + imageHeight;
 		img.attr({
-			src: Thickbox.imgPreloader.src,
+			src: _imgPreloader.src,
 			alt: $('#TB_caption').text()
 		});
 
@@ -387,87 +433,186 @@ var Thickbox = {
 			img.animate(imgOpt, {duration: 'fast'});
 		}
 
-		Thickbox.position(navigation && !firstNav);
-		Thickbox.displayClean();
+		_position(navigation && !firstNav);
+		_displayClean();
 	},
-	updateNavigation: function() {
-		var seq = Thickbox.galleryIndex;
-		var len = Thickbox.galleryData.length;
+	_updateNavigation = function() {
+		var seq = _galleryIndex, len = _galleryData.length;
 		$('#TB_prev').css('display', (seq == 0 ? 'none' : ''));
 		$('#TB_next').css('display', (seq >= len-1 ? 'none' : ''));
 		$('#TB_imageCount').text('Imagen ' + (seq+1) + ' de ' + len);
 	},
-	navigate: function() {
-		var seq = Thickbox.galleryIndex + (this.id == 'TB_prev' ? -1 : 1);
-		var len = Thickbox.galleryData.length;
+	_navigate = function() {
+		var seq = _galleryIndex + (this.id == 'TB_prev' ? -1 : 1), len = _galleryData.length;
 		if (seq < 0 || seq > len - 1) {
 			return false;
 		}
-		Thickbox.galleryIndex = seq;
-		var gitem = Thickbox.galleryData.eq(seq);
-		var url = gitem.children('img').eq(0).attr('src');
-		url = Thickbox.getUrlFromThumb(url);
-		Thickbox.updateNavigation();
-		if (Thickbox.imgPreloader.src != url) {
+		_galleryIndex = seq;
+		var gitem = _galleryData.eq(seq), url = _getUrlFromThumb(gitem.children('img').eq(0).attr('src'));
+		_updateNavigation();
+		if (_imgPreloader.src != url) {
 			$('#TB_window').stop();
 			$('#TB_Image').queue('fx',[]).stop().animate({opacity: 0}, {duration: 'fast', complete: function() {
-				Thickbox.imgPreloader.src = url;
+				_startLoader();
+				_imgPreloader.src = url;
 			}});
 		}
-		$('#TB_caption').html(Thickbox.getCaption(gitem));
+		$('#TB_caption').html(_getCaption(gitem));
 		$('#TB_descLink').attr('href',gitem.attr('href'));
 		return false;
 	},
-	imgTipEvent: function(e) {
+	_setParams = function(p) {
+		if (typeof p != 'object') {
+			return;
+		}
+		for (var n in p) {
+			var val = p[n];
+			switch(n) {
+				case 'minWidth':
+					_minWidth = val;
+					break;
+				case 'imageMarginWidth':
+					_imageMarginWidth = val;
+					break;
+				case 'minMarginWidth':
+					_minMarginWidth = val;
+					break;
+				case 'minMarginHeight':
+					_minMarginHeight = val;
+					break;
+				case 'loaderWait':
+					_loaderWait = (typeof val == 'number' && val);
+					break;
+				case 'logger':
+					_logger = (typeof val == 'function' && val);
+					break;
+			}
+		}
+	},
+	// Asigna una función a un evento interno. El tipo de evento puede tener un nombre (separado por un punto) para poder desasociarlo
+	_bind = function(event, fn) {
+		var parts = event.split('.'), ty = '', nm = '';
+		ty = parts[0];
+		if (parts.length > 1) {
+			nm = parts[1];
+		}
+		if (!_events[ty]) {
+			_events[ty] = [];
+		}
+		for (var i = 0; i < _events[ty].length; i++) {
+			if (_events[ty][i][0] == name) {
+				_events[ty][i][1] = fn;
+				return;
+			}
+		}
+		_events[ty].push([name, fn]);
+	},
+	// Desasigna una función a un evento interno
+	_unbind = function(event) {
+		var parts = event.split('.'), ty = '', nm = '';
+		ty = parts[0];
+		if (parts.length == 1 || !_events[ty]) {
+			return
+		}
+		for (var i = 0; i < _events[ty].length; i++) {
+			if (_events[ty][i][0] == name) {
+				_events[ty][i][1] = false;
+				return;
+			}
+		}
+	},
+	// Ejecuta las funciones asignadas a un evento interno
+	_trigger = function(ty) {
+		if (!_events[ty]) {
+			return;
+		}
+		for (var i = 0; i < _events[ty].length; i++) {
+			try {
+				var f = _events[ty][i][1];
+				if (f) {
+					f();
+				}
+			} catch(e) {}
+		}
+	},
+	// Borra todas las funciones asignadas al evento interno
+	_clearEvents = function(ty) {
+		try {
+			delete _events[ty];
+		} catch(e) {
+			_events[ty] = false;
+		}
+	},
+	_log = function(msg) {
+		if (_logger) {
+			_logger(msg);
+		}
+	},
+	_imgTipEvent = function(e) {
 		if (e.ctrlKey || e.altKey || e.shiftKey) {
-			return Thickbox.hideImgTip();
+			return _hideImgTip();
 		}
 		var target = e.target;
-		if (Thickbox.isTag(target,'img')) { // Gallery o thumb
+		if (_isTag(target,'img')) { // Gallery o thumb
 			var a = target.parentNode;
-			if (!Thickbox.isTag(a,'a') || !Thickbox.isClass(a,'image')) {
-				return Thickbox.hideImgTip();
+			if (!_isTag(a,'a') || !_isClass(a,'image')) {
+				return _hideImgTip();
 			}
 			var t = $(target);
 			// Mostramos solo si la imagen tiene un tamaño mínimo
 			if (t.width() < 40 || t.height() < 40) {
 				return;
 			}
-			return Thickbox.showImgTip(t);
+			return _showImgTip(t);
 		}
-		Thickbox.hideImgTip();
+		_hideImgTip();
 	},
-	imgTipClickEvent: function() {
-		if (Thickbox.imgTipTarget) {
-			$(Thickbox.imgTipTarget).click();
+	_imgTipClickEvent = function() {
+		if (_imgTipTarget) {
+			$(_imgTipTarget).click();
 			return false;
 		}
 	},
-	createImgTip: function() {
-		Thickbox.imgTip = $('<div id="TB_imagetip" title="Clic sobre la imagen para ampliar. Ctrl, Alt o Mayús. para acceder a la página de descripción de la imagen."></div>').appendTo('#positioned_elements');
-		Thickbox.imgTip.bind('click',Thickbox.imgTipClickEvent);
+	_createImgTip = function() {
+		//_imgTip = $('<div id="TB_imagetip" title="Clic sobre la imagen para ampliar. Ctrl, Alt o Mayús. para acceder a la página de descripción de la imagen."></div>').appendTo('#positioned_elements');
+		_imgTip = $('<div id="TB_imagetip" title="Clic sobre la imagen para ampliar. Ctrl, Alt o Mayús. para acceder a la página de descripción de la imagen."></div>').appendTo(document.body);
+		_imgTip.bind('click',_imgTipClickEvent);
 	},
-	showImgTip: function(target) {
-		if (!Thickbox.imgTip) {
-			Thickbox.createImgTip();
+	_showImgTip = function(target) {
+		if (!_imgTip) {
+			_createImgTip();
 		}
 		var of = target.offset();
-		Thickbox.imgTip.css({
+		_imgTip.css({
 			display: 'block',
 			left: of.left + target.width(),
 			top: of.top + target.height()
 		});
-		Thickbox.imgTipVisible = true;
-		Thickbox.imgTipTarget = target;
+		_imgTipVisible = true;
+		_imgTipTarget = target;
 	},
-	hideImgTip: function() {
-		if (Thickbox.imgTipVisible) {
-			Thickbox.imgTip.css('display','none');
-			Thickbox.imgTipVisible = false;
-			Thickbox.imgTipTarget = null;
+	_hideImgTip = function() {
+		if (_imgTipVisible) {
+			_imgTip.css('display','none');
+			_imgTipVisible = false;
+			_imgTipTarget = null;
 		}
-	}
-};
+	};
+
+	// Public functions
+	return {
+		init: _init,
+		showImage: _showImage,
+		showElement: _showElement,
+		showPage: _showPage,
+		showDialog: _showDialog,
+		remove: _remove,
+		bind: _bind,
+		unbind: _unbind,
+		setParams: _setParams
+	};
+
+}());
 
 if (wgAction != 'history' || !(wgNamespaceNumber == -1 && wgCanonicalSpecialPageName == 'Recentchanges')) {
 	$(Thickbox.init);
