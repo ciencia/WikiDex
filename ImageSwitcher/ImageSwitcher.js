@@ -250,7 +250,7 @@ window.hex_md5 = function(s) { return rstr2hex(rstr_md5(str2rstr_utf8(s))); }
 
 
 /*
-* Image Switch v1.3: Muestra imágenes al pasar el mouse sobre un enlace que apunte a la imagen a mostrar
+* Image Switch v1.4: Muestra imágenes al pasar el mouse sobre un enlace que apunte a la imagen a mostrar
 * REQUIERE: hex_md5
 *
 * Copyright (C) 2009  Jesús Martínez Novo ([[User:Ciencia Al Poder]])
@@ -302,7 +302,7 @@ ImageSwitcher.prototype = {
 		if ($UT.hasClass(linkcheck, k+'episodio')) {
 			var EPCode = $UT.trim($UT.getInnerText(link));
 			if (!this.re.ep.test(EPCode)) return;
-			url = this.getWikiImage('EP'+EPCode+(parseInt(EPCode, 10) > window.wgEPLastGif ? '.png' : '.gif'));
+			url = this.getWikiImage('EP'+EPCode+'.png');
 		} else {
 			if ($UT.hasClass(link, 'new') || link.title.toString().indexOf(fileNS) != 0) {
 				return;
