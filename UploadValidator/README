@@ -1,0 +1,5 @@
+ImageTitleValidator: Realiza validaciones sobre el nombre del archivo
+
+UploadValidator: Realiza validaciones en el momento de subir archivos,
+ proporcionando sugerencias de nombrado si es posible, categorización
+ o licencia.
