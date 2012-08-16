@@ -14,8 +14,8 @@ var _re_sp = /[\s_]+/g,
 	_re_scaled = /^\d+px-/,
 	_re_ns = /^_*(Archivo|File|Image|Imagen)[\-:]+/i, // Espacio de nombres
 	_re_ep = /^(EP|P|EE|EH|OP|OPJ|EDJ|PK|VI)[_.:\-]*(\d+)[_.:\-]*/i,
-	_re_trim_start: /^_+/g,
-	_re_trim_end: /[._\-]+$/g,
+	_re_trim_start = /^_+/g,
+	_re_trim_end = /[._\-]+$/g,
 	_blacklists = [// Busqueda en el nombre del archivo, sin extension. Los espacios están transformados en underscores --> _
 		/[A-Za-z0-9]{16,}/, // carros de letras
 		/^[A-Za-z0-9]{0,2}$/, // solo un o dos caracteres (el minimo es 3, para películas)
