@@ -1,0 +1,2 @@
+Clase para deshbilitar el botón de guardar la primera vez que se edita un artículo.
+No lo deshabilita físicamente, pero en lugarde guardar avisará al usuario con un mensaje que obtiene de una página del wiki.
