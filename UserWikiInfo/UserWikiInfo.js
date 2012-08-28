@@ -230,33 +230,7 @@
 		_fetchinginfo = false;
 	},
 	_uploadAvatar = function() {
-/*		var form = _dlg.find('form').get(0);
-		$.AIM.submit(form, {
-			onStart: function() {
-				_dlg.find('input').unbind().attr('readonly', 'readonly');
-			},
-			onComplete: function(response) {
-				try {
-					response = JSON.parse(response);
-					if(response.result.success === true) {
-
-						_dlg.find('input').unbind().end().html(
-							'<div style="float:left; margin-right: 10px;"><img class="useravatar" src="'+response.result.avatar+'" /></div>').append(
-							$('<p></p>').text(_previewsaveavatar)).append(
-							'<p><input type="button" name="save" /></p>').find(
-							'input[name="save"]').val(_saveavatar).bind('click', _submitChanges);
-						_dlg.dialog('option', {height: 'auto'}).dialog('open');
-					} else {
-						_changeAvatar(response.result.error);
-					}
-				} catch(e) {
-					_changeAvatar(e.message);
-				}
-			}
-		});
-		form.onsubmit = null;
-		$(form).submit();*/
-		_dlg.find('form').eq(0).find('input').attr('readonly', 'readonly').end().ajaxSubmit({
+		_dlg.find('form').eq(0).find('input').css('visibility', 'hidden').after('<span class="mw-small-spinner"></span>').end().ajaxSubmit({
 			dataType: 'json',
 			success: function(data) {
 				try {
