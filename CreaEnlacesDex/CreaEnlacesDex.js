@@ -203,7 +203,7 @@ window.CreaEnlacesDex = (function() {
 		i && g <= 3 && link(T_USA+'/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 3Gen [en]',T_S+': 3ª'+T_G+T_EN);
 		i && g <= 4 && link(T_USA+'-dp/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 4Gen [en]',T_S+': 4ª'+T_G+T_EN);
 		i && g <= 5 && link(T_USA+'-bw/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 5Gen [en]',T_S+': 5ª'+T_G+T_EN);
-		i && g <= 5 && link(T_USM+'moves/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'_'),T_SM+' 4Gen [en]',T_SM+': 4ª'+T_G+T_EN);
+		i && g <= 5 && link(T_USM+'moves/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'_'),T_SM+' 5Gen [en]',T_SM+': 5ª'+T_G+T_EN);
 	},
 	genBaya = function() {
 		var i = _vars.ingles,
