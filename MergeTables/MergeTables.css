@@ -1,0 +1,13 @@
+#mergetables-button {
+        position:absolute;
+        height:18px;
+        width:18px;
+        /*margin-left:-25px;
+        margin-top:12px;*/
+        border:1px solid #d3d3d3;
+        color:black;
+        background:#f4ffe8;/* url(http://images3.wikia.nocookie.net/__cb20070513172250/es.pokemon/images/7/7c/Mergetables-icon.png) no-repeat center;*/
+        cursor:pointer;
+        z-index:10;
+}
+#mergetables-button:hover { background-color:#f5f5dc;}
