@@ -90,7 +90,7 @@ window.CreaEnlacesDex = (function() {
 			eNombreMov = $('#nombremovimiento'),
 			eNumBaya = $('#numerobaya'), n;
 		_vars.nombreArt = window.wgPageName;
-		if ( eNombrePoke.exists() && eNumNacional.exists() ) {
+		if ( eNombrePoke.length && eNumNacional.length ) {
 			_vars.tipo = T_POKEMON;
 			_vars.nombre = $.trim(eNombrePoke.text());
 			n = parseInt($.trim(eNumNacional.text()), 10);
@@ -98,7 +98,7 @@ window.CreaEnlacesDex = (function() {
 			n = parseInt($.trim($('#numerohoenn').text()), 10);
 			_vars.hoenn = (!isNaN(n) && n > 0) ? n : 0;
 			return true;
-		} else if (eNombreMov.exists()) {
+		} else if (eNombreMov.length) {
 			_vars.tipo = T_MOVIMIENTO;
 			_vars.nombre = $.trim(eNombreMov.text());
 			_vars.ingles = $.trim($('#nombreingles').text());
@@ -109,7 +109,7 @@ window.CreaEnlacesDex = (function() {
 				}
 			}
 			return true;
-		} else if (eNumBaya.exists()) {
+		} else if (eNumBaya.length) {
 			_vars.tipo = T_BAYA;
 			_vars.nombre = _vars.nombreArt;
 			_vars.ingles = $.trim($('#nombreingles').text());
