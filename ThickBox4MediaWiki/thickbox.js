@@ -1,11 +1,11 @@
 // 03. TODO: En el CSS, quitar #TB_load { display:none; }
 /* <pre>
- * Thickbox4MediaWiki v3.0 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
+ * Thickbox4MediaWiki v3.1 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
  * Copyright (c) 2010 - 2011 Jesús Martínez (User:Ciencia_Al_Poder), Original Thickbox Copyright (c) 2007 Cody Lindley
  * Licensed under the MIT License: http://www.opensource.org/licenses/mit-license.php
 */
 window.Thickbox = (function($) {
-	var _version = '3.0',
+	var _version = '3.1',
 	// Dimensiones mínimas
 	_minWidth = 210,
 	// Margen entre la imagen y el borde de ThickBox
@@ -50,9 +50,9 @@ window.Thickbox = (function($) {
 			if (_isClass(a,'lightbox')) {
 				target.blur();
 				_getCaption = _getCaptionWikia;
-				_galleryData = $(target).closest('div.wikia-gallery').children('span.wikia-gallery-item').children('div.thumb').children('div.gallery-image-wrapper').children('a.lightbox');
+				_galleryData = $(target).closest('div.wikia-gallery').find('> span.wikia-gallery-item > div.thumb > div.gallery-image-wrapper > a.lightbox');
 				if (_galleryData.length == 0) {
-					_galleryData = $(target).closest('div.wikia-gallery').children('div.wikia-gallery-row').children('span.wikia-gallery-item').children('div.thumb').children('div.gallery-image-wrapper').children('a.lightbox');
+					_galleryData = $(target).closest('div.wikia-gallery').find('> div.wikia-gallery-row > span.wikia-gallery-item > div.thumb > div.gallery-image-wrapper > a.lightbox');
 				}
 				if (_galleryData.length == 0) {
 					return true;
@@ -75,7 +75,7 @@ window.Thickbox = (function($) {
 				if (_isTag(t,'ul') && _isClass(t,'gallery')) {
 					a.blur();
 					_getCaption = _getCaptionMW;
-					_galleryData = $(t).children('li.gallerybox').children().children('div.thumb').find('a.image');
+					_galleryData = $(t).find('div.thumb a.image');
 					_galleryIndex = _galleryData.index(a);
 					_showImage(a);
 					return false;
@@ -141,18 +141,24 @@ window.Thickbox = (function($) {
 	},
 	_showImage = function(elem) {
 		try {
+			var url, descUrl, descTitle, TB_secondLine = '', TB_descLink;
 			_tbLoaded = _tbKind.IMAGE;
 			_preload();
 			elem = $(elem);
 
-			var url = _getUrlFromThumb( elem.children('img').eq(0).attr('src') );
-			var TB_secondLine = '';
-			var descUrl = elem.attr('href');
+			url = _getUrlFromThumb( elem.find('> img').eq(0).attr('src') );
+			descUrl = elem.attr('href');
 			// hack para oasis:
-			if (typeof elem.attr('data-image-name') == 'string') {
-				descUrl = mw.util.wikiGetlink('File:' + elem.attr('data-image-name'));
+			descTitle = elem.find('> img').attr('data-image-name');
+			if (typeof descTitle == 'string') {
+				descUrl = mw.util.wikiGetlink('File:' + descTitle);
+			} else {
+				descTitle = elem.attr('data-image-name');
+				if (typeof descTitle == 'string') {
+					descUrl = mw.util.wikiGetlink('File:' + descTitle);
+				}
 			}
-			var TB_descLink = '<a id="TB_descLink" class="sprite details" href="' + descUrl + '" title="Ir a la página de descripción de la imagen"></a>';
+			TB_descLink = '<a id="TB_descLink" class="sprite details" href="' + descUrl + '" title="Ir a la página de descripción de la imagen"></a>';
 			// Se trata de un gallery?
 			if (_galleryIndex != -1) {
 				TB_secondLine = '<div id="TB_secondLine">'+
@@ -206,7 +212,7 @@ window.Thickbox = (function($) {
 				wnd = $('#TB_window'),
 				cel = $(rel).clone();
 			cel.contents().eq(0).remove();
-			cel.children('sup').remove();
+			cel.find('> sup').remove();
 			wnd.width(_minWidth).append(titleHTML+'<div id="TB_ajaxContent">'+cel.html()+'</div>');
 
 			var tgEl = $(target),
@@ -314,16 +320,16 @@ window.Thickbox = (function($) {
 		return thumb.replace('/thumb/','/').replace('/'+urlparts[urlparts.length-1], '');
 	},
 	_getCaptionThumb = function(elem) {
-		return elem.closest('.thumbinner').children('.thumbcaption').clone().children('div.magnify').remove().end().html();
+		return elem.closest('.thumbinner').find('> .thumbcaption').clone().find('> div.magnify').remove().end().html();
 	},
 	_getCaptionEmpty = function(elem) {
 		return $('<div></div>').text((elem.attr('title')||'')).html();
 	},
 	_getCaptionMW = function(gitem) {
-		return gitem.closest('li.gallerybox').eq(0).children().children('div.gallerytext').children().eq(0).html();
+		return gitem.closest('li.gallerybox').find('div.gallerytext').eq(0).html();
 	},
 	_getCaptionWikia = function(gitem) {
-		return gitem.closest('span.wikia-gallery-item').eq(0).children('div.lightbox-caption').eq(0).html();
+		return gitem.closest('span.wikia-gallery-item').find('> div.lightbox-caption').eq(0).html();
 	},
 	_imageError = function() {
 		_stopLoader();
@@ -385,7 +391,7 @@ window.Thickbox = (function($) {
 			return false;
 		}
 		_galleryIndex = seq;
-		gitem = _galleryData.eq(seq), url = _getUrlFromThumb(gitem.children('img').eq(0).attr('src'));
+		gitem = _galleryData.eq(seq), url = _getUrlFromThumb(gitem.find('> img').eq(0).attr('src'));
 		_updateNavigation();
 		if (_imgPreloader.src != url) {
 			$('#TB_window').stop();
