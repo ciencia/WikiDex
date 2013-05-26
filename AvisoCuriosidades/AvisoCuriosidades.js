@@ -1,4 +1,4 @@
-/* v2.0 <pre>
+/* v2.2 <pre>
  * AvisoCuriosidades: Muestra un aviso al añadir curiosidades
  * Copyright (c) 2011 - 2012 Jesús Martínez (User:Ciencia_Al_Poder)
  * This program is free software; you can redistribute it and/or modify
@@ -11,13 +11,14 @@
 	var _re_hcuriosidades = null,
 		_re_emptyline = null,
 		_initialItems = -1,
-		_tagCookie = null,
+		_tagSession = 'Curiosidades',
+		_pID,
 		_doneUnset = false,
 		_init = function() {
 			_re_hcuriosidades = new RegExp('==\\s*[Cc]uriosidades\\s*==');
 			_re_emptyline = new RegExp('^\\s*$');
-			_tagCookie = 'Curiosidades_'+mw.config.get('wgArticleId', 0).toString();
-			// Obtenemos número inicial desde cookie
+			_pID = mw.config.get('wgArticleId', 0).toString();
+			// Obtenemos número inicial desde storage
 			_getPSData();
 			// Si no hay nada, obtenemos de página
 			if (_initialItems == -1) {
@@ -48,20 +49,30 @@
 		},
 		_setPSData = function() {
 			if (_initialItems > 0 && !_doneUnset) {
-				$.cookie(_tagCookie, _initialItems.toString(), {expires: 1.2 / 24 / 60}); // 1.2 minutes
+				try {
+					sessionStorage.setItem(_tagSession, _pID + '|' + _initialItems.toString());
+				} catch (e) { }
 			}
 		},
 		_getPSData = function() {
-			var val = $.cookie(_tagCookie);
+			var val, parts, items;
+			try {
+				val = sessionStorage.getItem(_tagSession);
+			} catch (e) { }
 			if (val) {
-				val = parseInt(val, 10);
-				if (!isNaN(val) && val > -1) {
-					_initialItems = val;
+				parts = val.split('|');
+				if (parts.length == 2 && parts[0].toString() == _pID) {
+					items = parseInt(parts[1], 10);
+					if (!isNaN(items) && items > -1) {
+						_initialItems = items;
+					}
 				}
 			}
 		},
 		_unsetPSData = function() {
-			$.cookie(_tagCookie, null);
+			try {
+				sessionStorage.removeItem(_tagSession);
+			} catch (e) { }
 			_doneUnset = true;
 		},
 		_setEvents = function() {
