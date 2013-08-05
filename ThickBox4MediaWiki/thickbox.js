@@ -1,11 +1,10 @@
-// 03. TODO: En el CSS, quitar #TB_load { display:none; }
 /* <pre>
- * Thickbox4MediaWiki v3.1 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
+ * Thickbox4MediaWiki v3.2 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
  * Copyright (c) 2010 - 2011 Jesús Martínez (User:Ciencia_Al_Poder), Original Thickbox Copyright (c) 2007 Cody Lindley
  * Licensed under the MIT License: http://www.opensource.org/licenses/mit-license.php
 */
 window.Thickbox = (function($) {
-	var _version = '3.1',
+	var _version = '3.2',
 	// Dimensiones mínimas
 	_minWidth = 210,
 	// Margen entre la imagen y el borde de ThickBox
@@ -50,9 +49,9 @@ window.Thickbox = (function($) {
 			if (_isClass(a,'lightbox')) {
 				target.blur();
 				_getCaption = _getCaptionWikia;
-				_galleryData = $(target).closest('div.wikia-gallery').find('> span.wikia-gallery-item > div.thumb > div.gallery-image-wrapper > a.lightbox');
+				_galleryData = $(target).closest('div.wikia-gallery').find('> div.wikia-gallery-item > div.thumb > div.gallery-image-wrapper > a.lightbox');
 				if (_galleryData.length == 0) {
-					_galleryData = $(target).closest('div.wikia-gallery').find('> div.wikia-gallery-row > span.wikia-gallery-item > div.thumb > div.gallery-image-wrapper > a.lightbox');
+					_galleryData = $(target).closest('div.wikia-gallery').find('> div.wikia-gallery-row > div.wikia-gallery-item > div.thumb > div.gallery-image-wrapper > a.lightbox');
 				}
 				if (_galleryData.length == 0) {
 					return true;
@@ -329,7 +328,7 @@ window.Thickbox = (function($) {
 		return gitem.closest('li.gallerybox').find('div.gallerytext').eq(0).html();
 	},
 	_getCaptionWikia = function(gitem) {
-		return gitem.closest('span.wikia-gallery-item').find('> div.lightbox-caption').eq(0).html();
+		return gitem.closest('div.wikia-gallery-item').find('> div.lightbox-caption').eq(0).html();
 	},
 	_imageError = function() {
 		_stopLoader();

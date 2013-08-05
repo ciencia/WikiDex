@@ -108,7 +108,6 @@ body.ie6 #TB_window.fixedpos { /* ie6 hack */
 
 #TB_load {
 	position: fixed;
-	display:none;
 	height:13px;
 	width:208px;
 	z-index:103;
