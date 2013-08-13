@@ -1,10 +1,10 @@
 /* <pre>
- * Thickbox4MediaWiki v3.2 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
+ * Thickbox4MediaWiki v3.3 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
  * Copyright (c) 2010 - 2011 Jesús Martínez (User:Ciencia_Al_Poder), Original Thickbox Copyright (c) 2007 Cody Lindley
  * Licensed under the MIT License: http://www.opensource.org/licenses/mit-license.php
 */
 window.Thickbox = (function($) {
-	var _version = '3.2',
+	var _version = '3.3',
 	// Dimensiones mínimas
 	_minWidth = 210,
 	// Margen entre la imagen y el borde de ThickBox
@@ -181,6 +181,7 @@ window.Thickbox = (function($) {
 			}
 			_imgPreloader.onload = _imageLoaded;
 			_imgPreloader.onerror = _imageError;
+			_imgPreloader.src = ''; // chromium bug 7731
 			_imgPreloader.src = url;
 
 		} catch(e) {
