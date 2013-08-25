@@ -1,4 +1,4 @@
-/* v3.0 <pre>
+/* v3.1 <pre>
  * ImageTitleValidator: Realiza validaciones sobre el nombre del archivo
  * Copyright (c) 2010 - 2012 Jesús Martínez (User:Ciencia_Al_Poder)
  * This program is free software; you can redistribute it and/or modify
@@ -16,7 +16,7 @@ var _re_sp = /[\s_]+/g,
 	_re_ep = /^(EP|P|EE|EH|OP|OPJ|EDJ|PK|VI)[_.:\-]*(\d+)[_.:\-]*/i,
 	_re_trim_start = /^_+/g,
 	_re_trim_end = /[._\-]+$/g,
-	_blacklists = [// Busqueda en el nombre del archivo, sin extension. Los espacios están transformados en underscores --> _
+	_blacklists = [ // Busqueda en el nombre del archivo, sin extension. Los espacios están transformados en underscores --> _
 		/[A-Za-z0-9]{16,}/, // carros de letras
 		/^[A-Za-z0-9]{0,2}$/, // solo un o dos caracteres (el minimo es 3, para películas)
 		/\d{11,}/,
@@ -43,8 +43,12 @@ var _re_sp = /[\s_]+/g,
 		/pxp/i,
 		/\bpage\b/i,
 		/\bevo\b/i,
+		/^(August|September|October)/, // Web oficial XY
 		/^(DP|AG|IL)_*\d+/i, // Episodios en formato DP
 		/(jpg|jpeg|png|gif|bmp)$/i // Dobles extensiones
+	],
+	_whitelists = [ // Busqueda en el nombre del archivo, sin extension. Los espacios están transformados en underscores --> _
+		/superentrenamiento/
 	],
 	_padZero = function(str, len) {
 		while (str.length < len) {
@@ -176,13 +180,20 @@ var _re_sp = /[\s_]+/g,
 		_endValidation.call(this);
 	},
 	_validateBlackList = function() {
-		var val = 0;
-		var szName = this.destFile.replace(_re_sp, '_');
+		var val = 0, wl = false, szName = this.destFile.replace(_re_sp, '_');
 		szName = szName.substr(0, szName.lastIndexOf('.'));
-		for (var i = 0; i < _blacklists.length; i++) {
-			if (_blacklists[i].test(szName)) {
-				val = 1;
+		for (var i = 0; i < _whitelists.length; i++) {
+			if (_whitelists[i].test(szName)) {
+				wl = true;
 				break;
+			}
+		}
+		if (!wl) {
+			for (var i = 0; i < _blacklists.length; i++) {
+				if (_blacklists[i].test(szName)) {
+					val = 1;
+					break;
+				}
 			}
 		}
 		this.validations.blacklist = val;
