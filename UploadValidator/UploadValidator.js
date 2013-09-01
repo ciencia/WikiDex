@@ -43,7 +43,7 @@ var _re_sp = /[\s_]+/g,
 		/pxp/i,
 		/\bpage\b/i,
 		/\bevo\b/i,
-		/^(August|September|October)/, // Web oficial XY
+		/^(January|February|March|April|May|June|July|August|September|October|November|December)/, // Web oficial XY
 		/^(DP|AG|IL)_*\d+/i, // Episodios en formato DP
 		/(jpg|jpeg|png|gif|bmp)$/i // Dobles extensiones
 	],
