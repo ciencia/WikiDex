@@ -44,6 +44,7 @@
 		sysop: '<a href="/wiki/WikiDex:Administradores">administrador</a>',
 		rollback: '<a href="/wiki/WikiDex:Reversores">reversor</a>',
 		asistente: '<a href="/wiki/WikiDex:Asistentes">asistente</a>',
+		bot: '<a href="/wiki/WikiDex:Bots">bot</a>',
 		'fb-user': false,
 		'*': false,
 		user: false,
