@@ -11,6 +11,8 @@
  *   (at your option) any later version
  */
 window.CreaEnlacesDex = (function() {
+	'use strict';
+	
 	var T_POKEMON = 'p',
 	T_MOVIMIENTO = 'm',
 	T_BAYA = 'b',
@@ -53,7 +55,7 @@ window.CreaEnlacesDex = (function() {
 		// Número en Pokédex Hoenn
 		hoenn: null,
 		// Generación
-		generacion: null
+		generacion: 999
 	},
 	_renderFn = null,
 	_renderLink = null,
@@ -195,19 +197,21 @@ window.CreaEnlacesDex = (function() {
 		n && n <= 386 && link(T_USP+'-rs/'+zPadLeft(sn,3)+SHTML,T_S+' 3Gen [en]',T_S+': 3ª'+T_G+T_EN);
 		n && n <= 493 && link(T_USP+'-dp/'+zPadLeft(sn,3)+SHTML,T_S+' 4Gen [en]',T_S+': 4ª'+T_G+T_EN);
 		n && n <= 649 && link(T_USP+'-bw/'+zPadLeft(sn,3)+SHTML,T_S+' 5Gen [en]',T_S+': 5ª'+T_G+T_EN);
-		link(T_USM+'pokemon/'+m.toLowerCase().replace(new RegExp('\\s', 'g'),'_').replace(new RegExp('[.\']', 'g'), ''),T_SM+' [en]',T_SM+': 5ª'+T_G+T_EN);
+		n && n <= 718 && link(T_USP+'-xy/'+zPadLeft(sn,3)+SHTML,T_S+' 6Gen [en]',T_S+': 6ª'+T_G+T_EN);
+		n && n <= 649 && link(T_USM+'pokemon/'+m.toLowerCase().replace(new RegExp('\\s', 'g'),'_').replace(new RegExp('[.\']', 'g'), ''),T_SM+' [en]',T_SM+': 5ª'+T_G+T_EN);
 	},
 	genMov = function() {
 		var m = _vars.nombre,
 			i = (_vars.ingles || 0),
-			g = (parseInt(_vars.generacion, 10) || 1);
-		i && g <= 5 && link(T_UBP+toCamel(i)+'_(move)','Bulbapedia [en]','Bulbapedia'+T_EN);
-		i && g <= 5 && link(T_UVE+'moves/'+i.toLowerCase(),'Veekun [en]','Veekun'+T_EN);
+			g = (_vars.generacion || 999);
+		i && g <= 6 && link(T_UBP+toCamel(i)+'_(move)','Bulbapedia [en]','Bulbapedia'+T_EN);
+		i && g <= 6 && link(T_UVE+'moves/'+i.toLowerCase(),'Veekun [en]','Veekun'+T_EN);
 		i && g <= 3 && link(T_ULP+'rs/attacks/'+i,T_L+' 3Gen [en]',T_LP+'3ª'+T_G+T_EN);
 		i && g <= 4 && link(T_ULP+'dp/attacks/'+i,T_L+' 4Gen [en]',T_LP+'4ª'+T_G+T_EN);
 		i && g <= 3 && link(T_USA+'/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 3Gen [en]',T_S+': 3ª'+T_G+T_EN);
 		i && g <= 4 && link(T_USA+'-dp/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 4Gen [en]',T_S+': 4ª'+T_G+T_EN);
 		i && g <= 5 && link(T_USA+'-bw/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 5Gen [en]',T_S+': 5ª'+T_G+T_EN);
+		i && g <= 6 && link(T_USA+'-xy/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 6Gen [en]',T_S+': 6ª'+T_G+T_EN);
 		i && g <= 5 && link(T_USM+'moves/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'_'),T_SM+' 5Gen [en]',T_SM+': 5ª'+T_G+T_EN);
 	},
 	genBaya = function() {
