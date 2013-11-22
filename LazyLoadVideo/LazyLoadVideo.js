@@ -1,6 +1,6 @@
 /*
 * LazyLoadVideo - Muestra un botón para activar (mostrar) el reproductor de vídeos, para que no se carguen desde el inicio
-* Copyright (C) 2012  Jesús Martínez Novo ([[User:Ciencia Al Poder]])
+* Copyright (C) 2012 - 2013 Jesús Martínez Novo ([[User:Ciencia Al Poder]])
 * 
 * This program is free software; you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -12,14 +12,11 @@
 var _title = (window.lazyloadvideotitle || 'Clic para activar el vídeo'),
 _thumbUrl = 'http://i1.ytimg.com/vi/{0}/hqdefault.jpg';
 _init = function() {
-	var ytContents = $('#'+window.bodyContentId).find('div.video').children('div.thumbinner').children('div.youtube');
-	if (ytContents.length > 0) {
-		ytContents.children('object').each(_muestraThumb);
-	}
+	$('#'+window.bodyContentId).find('div.video > .thumbinner > .youtube > object').each(_muestraThumb);
 },
 // Agrega una imagen del vídeo en la posición del vídeo
 _muestraThumb = function() {
-	var oVideo = $(this), dataUrl = oVideo.attr('data'), vid = null, idx = dataUrl.indexOf('&'), w, h;
+	var oVideo = $(this), dataUrl = oVideo.find('> param[name="movie"]').attr('value'), vid = null, idx = dataUrl.indexOf('&'), w, h;
 	if (idx != -1) {
 		dataUrl = dataUrl.substr(0, idx);
 		idx = dataUrl.lastIndexOf('/');
