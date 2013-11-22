@@ -23,6 +23,10 @@ _muestraThumb = function() {
 		if (idx != -1) {
 			vid = dataUrl.substr(idx + 1);
 		}
+		// Parche por Wikia saboteando la extensión Youtube. Firefox requiere el atributo data, que Wikia ha omitido (aposta?). Lo recuperamos de nuevo
+		if (!oVideo.attr('data')) {
+			oVideo.attr('data', dataUrl);
+		}
 	}
 	// Se comprueba que esté oculto, para sincronizar con CSS
 	if (vid !== null && oVideo.css('display') == 'none') {
