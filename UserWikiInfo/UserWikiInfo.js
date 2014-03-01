@@ -95,6 +95,8 @@
 		u.replace(new RegExp('\<', 'g'), '&lt;').replace(new RegExp('\>', 'g'), '&gt;').replace(new RegExp('"', 'g'), '&quot;');
 		if (firstedit !== '') {
 			_firstEditDate = new Date(Date.UTC(firstedit.substr(0,4), parseInt(firstedit.substr(5,2),10)-1, firstedit.substr(8,2)));
+		} else {
+			_firstEditDate = new Date();
 		}
 		if (groups && groups.length > 0) {
 			var g = '';
