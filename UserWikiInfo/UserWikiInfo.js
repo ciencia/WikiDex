@@ -58,7 +58,7 @@
 	_isIP = false,
 	_userid = null,
 	_username = null,
-	_firstEdit = null,
+	_firstEditDate = null,
 	_dlg = null,
 	_fetchinginfo = false,
 	_formdata = null,
