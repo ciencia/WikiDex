@@ -1,6 +1,6 @@
 /*
 * LazyLoadVideo - Muestra un botón para activar (mostrar) el reproductor de vídeos, para que no se carguen desde el inicio
-* Copyright (C) 2012 - 2013 Jesús Martínez Novo ([[User:Ciencia Al Poder]])
+* Copyright (C) 2012 - 2014 Jesús Martínez Novo ([[User:Ciencia Al Poder]])
 * 
 * This program is free software; you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -23,10 +23,6 @@ _muestraThumb = function() {
 		if (idx != -1) {
 			vid = dataUrl.substr(idx + 1);
 		}
-		// Parche por Wikia saboteando la extensión Youtube. Firefox requiere el atributo data, que Wikia ha omitido (aposta?). Lo recuperamos de nuevo
-		if (!oVideo.attr('data')) {
-			oVideo.attr('data', dataUrl);
-		}
 	}
 	// Se comprueba que esté oculto, para sincronizar con CSS
 	if (vid !== null && oVideo.css('display') == 'none') {
@@ -38,9 +34,14 @@ _muestraThumb = function() {
 },
 // Evento al hacer clic en el overlay
 _discoverVideo = function(e) {
-	var p = $(this).parent();
-	p.children('object').css('display', 'inline');
-	p.children('img.videothumb').add(this).unbind().remove();
+	var p = $(this).parent(), oVideo = p.find('> object'), mparam;
+	// En Safari ya versión 2 ya no funciona, porque redirecciona desde otro dominio y no lo permite por seguridad. Hay que cambiar a la versión 3
+	// http://code.google.com/p/gdata-issues/issues/detail?id=4887
+	mparam = oVideo.find('> param[name="movie"]');
+	oVideo.attr('data', oVideo.attr('data').replace('version=2', 'version=3'));
+	mparam.attr('value', mparam.attr('value').replace('version=2', 'version=3'));
+	oVideo.css('display', 'inline');
+	p.find('> img.videothumb').add(this).unbind().remove();
 };
 
 // Muy lazy load
