@@ -10,7 +10,7 @@
 (function() {
 
 var _title = (window.lazyloadvideotitle || 'Clic para activar el vídeo'),
-_thumbUrl = 'http://i1.ytimg.com/vi/{0}/hqdefault.jpg';
+_thumbUrl = 'http://i1.ytimg.com/vi/{0}/hqdefault.jpg',
 _init = function() {
 	$('#'+window.bodyContentId).find('div.video > .thumbinner > .youtube > object').each(_muestraThumb);
 },
@@ -26,14 +26,15 @@ _muestraThumb = function() {
 	}
 	// Se comprueba que esté oculto, para sincronizar con CSS
 	if (vid !== null && oVideo.css('display') == 'none') {
-		w = oVideo.attr('width'), h = oVideo.attr('height');
+		w = oVideo.attr('width');
+		h = oVideo.attr('height');
 		oVideo.parent().append(
 			$(document.createElement('img')).attr('src', _thumbUrl.replace('{0}', vid)).attr({width: w, height: h}).addClass('videothumb')).append(
 			$('<div class="videodiscoveryoverlay"></div>').css({width: w.concat('px'), height: h.concat('px')}).attr('title', _title).bind('click', _discoverVideo));
 	}
 },
 // Evento al hacer clic en el overlay
-_discoverVideo = function(e) {
+_discoverVideo = function() {
 	var p = $(this).parent(), oVideo = p.find('> object'), mparam;
 	// En Safari ya versión 2 ya no funciona, porque redirecciona desde otro dominio y no lo permite por seguridad. Hay que cambiar a la versión 3
 	// http://code.google.com/p/gdata-issues/issues/detail?id=4887
@@ -45,7 +46,7 @@ _discoverVideo = function(e) {
 };
 
 // Muy lazy load
-(typeof(window.safeOnLoadHook)=='function'?safeOnLoadHook:$)(function() {
+(typeof(window.safeOnLoadHook)=='function'?window.safeOnLoadHook:$)(function() {
 	window.setTimeout(_init, 2000);
 });
 
