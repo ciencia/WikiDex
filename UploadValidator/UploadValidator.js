@@ -1,4 +1,4 @@
-/* v3.2 <pre>
+/* v3.3 <pre>
  * ImageTitleValidator: Realiza validaciones sobre el nombre del archivo
  * Copyright (c) 2010 - 2012 Jesús Martínez (User:Ciencia_Al_Poder)
  * This program is free software; you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 var _re_sp = /[\s_]+/g,
 	_re_scaled = /^\d+px-/,
 	_re_ns = /^_*(Archivo|File|Image|Imagen)[\-:]+/i, // Espacio de nombres
+	// Prefijos de episodios. Se han de agregar en el case de _fixEPname, y en otras RegEx de UploadValidator
 	_re_ep = /^(EP|P|EE|EH|OP|OPJ|EDJ|PK|VI|PO|SME)[_.:\-]*(\d+)[_.:\-]*/i,
 	_re_trim_start = /^_+/g,
 	_re_trim_end = /[._\-]+$/g,
@@ -248,8 +249,8 @@ var _lock = false,
 	_skip = false,
 	_files = [],
 	_inputDescCommon,
-	_re_EP = /^(EP|EE|EH|P|OP|OPJ|EDJ|PK|VI)(\d+)/,
-	_re_EPcat = /\[\[\s*[Cc]ategor(y|ía)\s*:\s*(EP|EE|EH|P|OP|OPJ|EDJ|PK|VI)\d+\s*(\|.*)?\]\]/,
+	_re_EP = /^(EP|EE|EH|P|OP|OPJ|EDJ|PK|VI|PO|SME)(\d+)/,
+	_re_EPcat = /\[\[\s*[Cc]ategor(y|ía)\s*:\s*(EP|EE|EH|P|OP|OPJ|EDJ|PK|VI|PO|SME)\d+\s*(\|.*)?\]\]/,
 	_re_EPlic = /\{\{\s*[Ss]creenshotTV\s*(\|.*)?\}\}/,
 	_submitBtn = null,
 	_dlg = null,
