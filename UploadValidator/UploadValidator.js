@@ -1,4 +1,4 @@
-/* v3.1 <pre>
+/* v3.2 <pre>
  * ImageTitleValidator: Realiza validaciones sobre el nombre del archivo
  * Copyright (c) 2010 - 2012 Jesús Martínez (User:Ciencia_Al_Poder)
  * This program is free software; you can redistribute it and/or modify
@@ -13,7 +13,7 @@
 var _re_sp = /[\s_]+/g,
 	_re_scaled = /^\d+px-/,
 	_re_ns = /^_*(Archivo|File|Image|Imagen)[\-:]+/i, // Espacio de nombres
-	_re_ep = /^(EP|P|EE|EH|OP|OPJ|EDJ|PK|VI)[_.:\-]*(\d+)[_.:\-]*/i,
+	_re_ep = /^(EP|P|EE|EH|OP|OPJ|EDJ|PK|VI|PO|SME)[_.:\-]*(\d+)[_.:\-]*/i,
 	_re_trim_start = /^_+/g,
 	_re_trim_end = /[._\-]+$/g,
 	_blacklists = [ // Busqueda en el nombre del archivo, sin extension. Los espacios están transformados en underscores --> _
@@ -117,6 +117,8 @@ var _re_sp = /[\s_]+/g,
 			case 'EDJ':
 			case 'PK':
 			case 'VI':
+			case 'PO':
+			case 'SME':
 				len = 2;
 				break;
 			default:
