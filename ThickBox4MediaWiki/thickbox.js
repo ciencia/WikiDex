@@ -400,7 +400,8 @@ window.Thickbox = (function($) {
 				_imgPreloader.src = url;
 			}});
 		}
-		$('#TB_caption').html(_getCaption(gitem));
+		// Si la función no encuentra el elemento, puede devolver undefined, y en este caso no cambia el contenido. Forzamos un null en ese caso
+		$('#TB_caption').html( ( _getCaption(gitem) || null ) );
 		$('#TB_descLink').attr('href',gitem.attr('href'));
 		return false;
 	},
