@@ -12,7 +12,7 @@
 var _title = (window.lazyloadvideotitle || 'Clic para activar el vídeo'),
 _thumbUrl = 'http://i1.ytimg.com/vi/{0}/hqdefault.jpg',
 _init = function() {
-	$('#'+window.bodyContentId).find('div.video > .thumbinner > .youtube > object').each(_muestraThumb);
+	$('#'+window.bodyContentId).find('div.video > .thumbinner > .youtube > object, div.video > .youtube > object').each(_muestraThumb);
 },
 // Agrega una imagen del vídeo en la posición del vídeo
 _muestraThumb = function() {
