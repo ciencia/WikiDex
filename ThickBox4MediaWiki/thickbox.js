@@ -1,10 +1,10 @@
 /* <pre>
- * Thickbox4MediaWiki v3.4 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
- * Copyright (c) 2010 - 2011 Jesús Martínez (User:Ciencia_Al_Poder), Original Thickbox Copyright (c) 2007 Cody Lindley
+ * Thickbox4MediaWiki v3.5 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
+ * Copyright (c) 2010 - 2014 Jesús Martínez (User:Ciencia_Al_Poder), Original Thickbox Copyright (c) 2007 Cody Lindley
  * Licensed under the MIT License: http://www.opensource.org/licenses/mit-license.php
 */
 window.Thickbox = (function($) {
-	var _version = '3.4',
+	var _version = '3.5',
 	// Dimensiones mínimas
 	_minWidth = 210,
 	// Margen entre la imagen y el borde de ThickBox
@@ -42,7 +42,8 @@ window.Thickbox = (function($) {
 		var target = e.target;
 		if (_isTag(target,'img')) { // Gallery o thumb
 			var a = target.parentNode;
-			if (!a || !_isTag(a,'a') || !_isClass(a,'image')) {
+			// Imágenes con enlaces a otros artículos no tienen la clase "image", excepto en Wikia donde sí la tiene y añaden "link-internal"
+			if (!a || !_isTag(a,'a') || !_isClass(a,'image') || _isClass(a, 'link-internal')) {
 				return true;
 			}
 			// Galería Wikia 2
