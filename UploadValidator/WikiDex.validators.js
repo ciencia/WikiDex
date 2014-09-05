@@ -1,3 +1,4 @@
+// <pre>
 if (!mw.config.get('wgValidators', null)) {
 	mw.config.set('wgValidators', []);
 }
@@ -295,3 +296,4 @@ mw.config.get('wgValidators').push({
 	});
 	
 })(mw.config.get('wgValidators'));
+// </pre>

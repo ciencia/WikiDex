@@ -1,4 +1,4 @@
-/* 
+/* <pre>
  * Bootstrap for UploadValidator: Integra UploadValidator en los formularios
  * de subida de archivos, y modifica MultipleUpload para agregar descripciones
  * individualizadas en cada archivo.
@@ -256,3 +256,5 @@
 
 	$(_init);
 })(jQuery, mw);
+
+// </pre>
