@@ -1,5 +1,78 @@
-ImageTitleValidator: Realiza validaciones sobre el nombre del archivo
+Upload Validator: Realiza validaciones en el momento de subir archivos,
+proporcionando sugerencias de nombrado si es posible, categorización
+o licencia.
 
-UploadValidator: Realiza validaciones en el momento de subir archivos,
- proporcionando sugerencias de nombrado si es posible, categorización
- o licencia.
+Funciones de UploadValidator:
+
+* registerValidators: Registra uno o varios validadores. Debe pasarse directamente un validador o un array de validadores. El nombre del validador se usa para evitar agregar repetidos. Si se intenta agregar un validador con el mismo nombre que uno ya existente, se reemplazará.
+* setMessages: Establece los textos de idioma.
+* validate: Realiza la validación de los parámetros de subida de archivos con los validadores registrados.
+
+== Validadores ==
+
+Los validadores son módulos independientes que realizan la validación y proponen los cambios. Los validadores deben ser independientes y ajustarse a una clase de archivo (ya sea por categoría, nombre, etc).
+
+Los validadores se ordenan por prioridad creciente y se evalúan secuencialmente hasta que uno de ellos sea aplicable al archivo. Cuando uno de los validadores es aplicable, el resto de validadores no se procesará, excepto si tiene prioridad negativa (ver más abajo).
+
+Constan de estas propiedades:
+
+* priority: Prioridad, valor numérico. Determina el orden en que será procesado respecto otros validadores. Si la prioridad es negativa, solo se usarán para realizar correcciones menores en el nombre, y aun cuando esto suceda, el resto de validadores seguirá siendo procesado.
+* name: nombre del validador. Obligatorio. Usado para identificar al validador. Si se agrega un validador con el mismo nombre, se reemplazará el existente en vez de agregarlo otra vez.
+
+Métodos de un validador:
+
+* validate: función que realiza la validación. Se detalla en la sección siguiente.
+
+== Método de validación ==
+
+Al método de validación se le pasa un objeto con estas propiedades:
+
+* sources: array de objetos con los archivos a subir. Cada objeto tiene estas propiedades:
+** inputFile: Objeto jQuery con el control de formulario del archivo a subir (AUN NO SE USA)
+** inputName: Objeto jQuery con el control de formulario del nombre del archivo destino
+** inputDesc: Objeto jQuery con el control de formulario de la descripción del archivo
+* commonDesc: Objeto jQuery con el control de formulario de la descripción común de los archivos (si se suben más de uno y comparten la descripción)
+* license: licencia
+* callback: función a ejecutar cuando se termine la validación
+
+Al método de validación de los validadores se le pasa un objeto con las siguientes propiedades:
+
+* title: título de la imagen. Es el original de la imagen. Nota: Este estará normalizado, cambiando guiones bajos por espacios
+* filename: ruta del archivo a subir
+* description: texto de la descripción de la imagen, si se ha informado
+* categories: array de nombres normalizados de categorías presentes en la descripción (sin el espacio de nombres)
+* templates: array de nombres normalizados de plantillas transcluidas en la descripción (sin el espacio de nombres)
+* license: nombre de la licencia seleccionada (único para todas las imágenes). Nota que el usuario puede haber colocado la plantilla de licencia en el texto, y aparecer en la lista de plantillas
+
+En caso de que la función de validación determine que deben realizarse cambios, debe devolver un objeto con las siguientes propiedades (no deben existir necesariamente, a excepción de filetype cuando no se informe disallow). Si no se informan o no existen, se mantendrá el valor original y no se propondrán cambios:
+
+* filetype: tipo de archivo: se usa para indicar al usuario qué tipo de archivo se ha detectado, para darle una idea de por qué se sugieren los cambios. Debe estar informado a menos que se informe la propiedad disallow o tenga prioridad negativa
+* disallow: mensaje a mostrar para abortar la subida, por detectar que es SPAM o algo así. En este caso no se propondrá hacer ninguna otra acción
+* title: título propuesto de la imagen
+* description: descripción de la imagen. Si se informa, se ignoran los parámetros de categorías y plantillas
+* added_categories: array de categorías a añadir
+* removed_categories: array de categorías a eliminar
+* added_templates: array de plantillas a añadir
+* removed_templates: array de plantillas a eliminar
+* license: nueva licencia. Por ahora no se puede borrar
+* note: información adicional a mostrar al usuario, por ejemplo advertencias o instrucciones adicionales, motivo de algún cambio, etc
+
+Si la función de validación debe realizar tareas de forma asíncrona, esta debe devolver en su lugar una función, que acepte como primer parámetro una función de callback. Entonces, el sistema llamará a la función pasándole como primer parámetro otra función, a la que la función de validación debe llamar cuando termine las tareas asíncronas que debe realizar, pasándole como primer parámetro lo que debería devolver normalmente como función de validación (el objeto descrito anteriormente).
+
+Ejemplo:
+
+validate = function(ui) {
+	return function(fnCallback) {
+		fnCallback({filetype:'test', note:'Validación asíncrona'});
+	};
+}
+
+Esto pausará las validaciones hasta que la función de validación haya terminado de realizar las acciones asíncronas necesarias, y la función debe llamar a
+
+== TODO ==
+
+Cosas a añadir:
+
+* Soporte para parámetros en plantillas.
+* Soporte para clave de ordenación en categorías.
+

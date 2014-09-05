@@ -1,242 +1,7 @@
-/* v3.3 <pre>
- * ImageTitleValidator: Realiza validaciones sobre el nombre del archivo
- * Copyright (c) 2010 - 2012 Jesús Martínez (User:Ciencia_Al_Poder)
- * This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version
- *
- * @requires: mediawiki.api
- */
-(function() {
-
-var _re_sp = /[\s_]+/g,
-	_re_scaled = /^\d+px-/,
-	_re_ns = /^_*(Archivo|File|Image|Imagen)[\-:]+/i, // Espacio de nombres
-	// Prefijos de episodios. Se han de agregar en el case de _fixEPname, y en otras RegEx de UploadValidator
-	_re_ep = /^(EP|P|EE|EH|OP|OPJ|EDJ|PK|VI|PO|SME|PL)[_.:\-]*(\d+)[_.:\-]*/i,
-	_re_trim_start = /^_+/g,
-	_re_trim_end = /[._\-]+$/g,
-	_blacklists = [ // Busqueda en el nombre del archivo, sin extension. Los espacios están transformados en underscores --> _
-		/[A-Za-z0-9]{16,}/, // carros de letras
-		/^[A-Za-z0-9]{0,2}$/, // solo un o dos caracteres (el minimo es 3, para películas)
-		/\d{11,}/,
-		/[\\\/\|<>#"=\?]/, // Caracteres ilegales
-		/^\d+$/, // Solo números
-		/\.{2,}/, // Varios puntos seguidos
-		/\-{2,}/, // Varios guiones
-		/[A-Z]{5,}/, // Mayúsculas excesivas
-		/-\d+-/, // Sufijos raros de venir de otras webs
-		/image(n|s)?_?\(?\d+\)?/i,
-		/^img/i,
-		/thumb/i,
-		/_by_/i, // AA by BB
-		/trainer[_\-]?card/i, // Trainercards
-		/^fb\.\d+/i,
-		/Pok[ée]mon_.+_espa[ñn]ol_\d+/i, // Screenshots de emuladores
-		/nuevopok[eéÉ]/i, // Nombres a evitar
-		/new[_\-]?pok[eéÉ]/i,
-		/wallpaper/i,
-		/unnamed/i,
-		/escanear/i,
-		/CIMG/i,
-		/^.{0,5}copia_de/i,
-		/pxp/i,
-		/\bpage\b/i,
-		/\bevo\b/i,
-		/^(January|February|March|April|May|June|July|August|September|October|November|December)/, // Web oficial XY
-		/^(DP|AG|IL)_*\d+/i, // Episodios en formato DP
-		/(jpg|jpeg|png|gif|bmp)$/i // Dobles extensiones
-	],
-	_whitelists = [ // Busqueda en el nombre del archivo, sin extension. Los espacios están transformados en underscores --> _
-		/superentrenamiento/
-	],
-	_padZero = function(str, len) {
-		while (str.length < len) {
-			str = '0'+str;
-		}
-		return str;
-	},
-	// Retorna true en caso de haber completado la validación. False en caso de estar en proceso asíncrono
-	_validate = function(callback) {
-		this.completed = false;
-		this.callback = (callback||null);
-		this.validations = {thumb:-1, blacklist:-1};
-		if (this.destFile == '') {
-			this.validations = {};
-			_endValidation.call(this);
-			return true;
-		}
-		if (_validateThumb.call(this)) {
-			_fixName.call(this);
-			_validateBlackList.call(this);
-			_endValidation.call(this);
-			return true;
-		}
-		return false;
-	},
-
-	// Hace algunas correcciones básicas
-	_fixName = function() {
-		var n = this.suggestName.gen;
-		// Esto debería haberlo hecho ya el sistema, pero por si aca
-		n = n.replace(_re_sp,'_');
-		var dot = n.lastIndexOf('.');
-		if (dot == -1) return;
-		// Extensión en minúscula y normalizando jpeg
-		var ext = n.substr(dot+1).toLowerCase();
-		if (ext == 'jpeg') {
-			ext = 'jpg';
-		}
-		n = n.substr(0,dot);
-		// Borrar espacios (y otros caracteres) antes y después del nombre (sin extensión) 
-		n = n.replace(_re_trim_start, '').replace(_re_trim_end, ''); 
-		// Mayúscula la primera
-		n = n.substr(0,1).toUpperCase() + n.substr(1);
-		// Sin namespace
-		if (_re_ns.test(n)) {
-			n = n.replace(_re_ns, '');
-		}
-		this.suggestName.gen = n+'.'+ext;
-		_fixEPname.call(this, n, ext);
-	},
-	// Correcciones para imágenes de episodios: Código + número + espacio + letra en mayúscula
-	_fixEPname = function(n, ext) {
-		var reRes = _re_ep.exec(n);
-		if (!reRes) return;
-		var parts = reRes[1].toUpperCase();
-		var len = 0;
-		switch (parts) {
-			case 'EP':
-				len = 3;
-				break;
-			case 'P':
-			case 'EE':
-			case 'EH':
-			case 'OP':
-			case 'OPJ':
-			case 'EDJ':
-			case 'PK':
-			case 'VI':
-			case 'PO':
-			case 'SME':
-			case 'PL':
-				len = 2;
-				break;
-			default:
-				return;
-				break;
-		}
-		parts += _padZero(reRes[2], len);
-		var title = n.substr(reRes[0].length);
-		if (title.length >= 1) {
-			title = '_' + title.substr(0,1).toUpperCase() + title.substr(1);
-		}
-		this.suggestName.ep = parts + title + '.' + ext;
-		return true;
-	},
-	// Valida que no sea un thumb. Si lo es mira si la imagen existe.
-	_validateThumb = function() {
-		var reArr = _re_scaled.exec(this.destFile), api, params;
-		if (reArr) {
-			this.suggestName.gen = this.destFile.substr(reArr[0].length);
-			params = {
-				action: 'query',
-				titles: 'File:'+this.suggestName.gen,
-				prop: 'imageinfo',
-				iiprop: 'url'
-			};
-			api = new mw.Api();
-			api.get(params, {
-				ok: function(self) {
-					return function(data) {
-						_validateThumbExists.call(self, data);
-					};
-				}(this),
-				err: function(self) {
-					return function() {
-						self.validations.thumb = 1;
-						_endValidation.call(self);
-					};
-				}(this)
-			} );
-			return false;
-		} else {
-			this.validations.thumb = 0;
-			return true;
-		}
-	},
-	_validateThumbExists = function(data) {
-		if (data.error) {
-			this.validations.thumb = 1;
-			_endValidation.call(this);
-			return;
-		}
-		for (var pageid in data.query.pages) {
-			if (!data.query.pages[pageid].imageinfo) {
-				// No existe
-				this.validations.thumb = 1;
-			} else {
-				// Existe
-				this.validations.thumb = 2;
-			}
-		}
-		_endValidation.call(this);
-	},
-	_validateBlackList = function() {
-		var val = 0, wl = false, szName = this.destFile.replace(_re_sp, '_');
-		szName = szName.substr(0, szName.lastIndexOf('.'));
-		for (var i = 0; i < _whitelists.length; i++) {
-			if (_whitelists[i].test(szName)) {
-				wl = true;
-				break;
-			}
-		}
-		if (!wl) {
-			for (var i = 0; i < _blacklists.length; i++) {
-				if (_blacklists[i].test(szName)) {
-					val = 1;
-					break;
-				}
-			}
-		}
-		this.validations.blacklist = val;
-	},
-	_endValidation = function() {
-		this.validated = true;
-		for (var item in this.validations) {
-			if (this.validations[item] !== 0) {
-				this.validated = false;
-			}
-		}
-		this.completed = true;
-		if (typeof this.callback == 'function') {
-			this.callback(this);
-		}
-	},
-	_imageTitleValidator = function(destFile) {
-		this.destFile = (destFile||'');
-		this.completed = false;
-		this.validated = false;
-		this.validations = {};
-		this.suggestName = {gen: this.destFile};
-		this.callback = null;
-	};
-
-	_imageTitleValidator.prototype = {
-		validate: function(callback) {
-			_validate.call(this, callback);
-		}
-	};
-
-	window.ImageTitleValidator = _imageTitleValidator;
-
-})();
-
 /* <pre>
- * UploadValidator v3.0: Realiza validaciones en el momento de subir archivos, proporcionando sugerencias de nombrado si
+ * UploadValidator v4.0: Realiza validaciones en el momento de subir archivos, proporcionando sugerencias de nombrado si
  *    es posible, categorización o licencia.
- * Copyright (c) 2010 - 2012 Jesús Martínez (User:Ciencia_Al_Poder)
+ * Copyright (c) 2010 - 2014 Jesús Martínez (User:Ciencia_Al_Poder)
  * This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -244,410 +9,289 @@ var _re_sp = /[\s_]+/g,
  *
  * @requires: jquery.ui.dialog
  */
-(function($) {
 
-var _lock = false,
-	_skip = false,
-	_files = [],
-	_inputDescCommon,
-	_re_EP = /^(EP|EE|EH|P|OP|OPJ|EDJ|PK|VI|PO|SME|PL)(\d+)/,
-	_re_EPcat = /\[\[\s*[Cc]ategor(y|ía)\s*:\s*(EP|EE|EH|P|OP|OPJ|EDJ|PK|VI|PO|SME|PL)\d+\s*(\|.*)?\]\]/,
-	_re_EPlic = /\{\{\s*[Ss]creenshotTV\s*(\|.*)?\}\}/,
-	_submitBtn = null,
+window.UploadValidator = (function($, mw) {
+	'use strict';
+	var _reTemplates = /\{\{\s*([^\{\}\|]+)\s*(\|[^\}]+)?\}\}/g,
+	_reCategories = null,
+	_reTitleWhiteSpace = /[ _]+/g,
+	_validators = [],
+	_results = null,
+	_currentIndex = 0,
+	_validationParams = null,
+	_messages = {},
 	_dlg = null,
-	_fieldHeight = 0,
+	_closing = false,
 	_init = function() {
-		if (mw.config.get('wgCanonicalSpecialPageName', '') == 'Upload' && $('#wpDestFile').is('input') && !$('#wpDestFile').attr('readonly')) { // verificar que no se hace un re-upload
-			_submitBtn = $('input[type=submit][name=wpUpload]', '#mw-upload-form');
-			$('#mw-upload-form').bind('submit', _checkSubmit);
-		} else if (mw.config.get('wgCanonicalSpecialPageName', '') == 'MultipleUpload') {
-			_submitBtn = $('input[type=submit][name=wpUpload]', '#mw-upload-form');
-			$('#mw-upload-form').bind('submit', _checkSubmit);
-			_setupMultipleUploadForm();
+		_initRegExp();
+	},
+	// Logging utility
+	_log = function(text) {
+		if (window.console && window.console.log) {
+			window.console.log('UploadValidator: ' + text);
 		}
 	},
-	// Evento asociado al submit del formulario. Retornar false para no enviar los datos
-	_checkSubmit = function() {
-		if (_lock) return false;
-		if (_skip) {
-			_skip = false;
+	// Inits category regexp to find categories present on the description text
+	_initRegExp = function() {
+		var catNS = 'Category';
+		if (mw.config.get('wgContentLanguage') != 'en' && mw.config.get('wgFormattedNamespaces')) {
+			catNS += '|' + mw.config.get('wgFormattedNamespaces')['14'];
+		}
+		_log('catNS: '+catNS);
+		_reCategories = new RegExp('\\[\\[\\s*('+catNS+')\\s*:\\s*([^\\|\\[\\]]+)\\]\\]', 'gi');
+	},
+	_validate = function(params) {
+		var done;
+		_validationParams = params;
+		_log('Start validation.');
+		// Nothing to do if there are no validators registered, or no sources were provided
+		if (_validators.length === 0 || !params.sources || params.sources.length === 0) {
+			_log('No validators registered, or no sources provided.');
+			_endValidation(true);
 			return true;
 		}
-		_submitBtn.attr('disabled', 'disabled');
-		_lock = true;
-		_files = [];
-		if (mw.config.get('wgCanonicalSpecialPageName', '') == 'MultipleUpload') {
-			_inputDescCommon = $('#wpUploadDescription');
-			for (var index = 0; document.getElementById('wpUploadFile'+index) !== null; index++) {
-				var upFile = (($('#wpUploadFile'+index).val() || '').length != 0);
-				var upFName = (($('#wpDestFile'+index).val() || '').length != 0);
-				if (upFile && !upFName) {
-					_showDlg('Debes escribir un nombre para el archivo <tt class="file"></tt>.', -1, {file: $('#wpUploadFile'+index).val()});
-					return false;
-				} else if (!upFile && upFName) {
-					_showDlg('Debes seleccionar un archivo de tu PC para el archivo <tt class="name"></tt>.', -1, {name: $('#wpDestFile'+index).val()});
-					return false;
-				} else if (upFile && upFName) {
-					_files.push({inputFile: $('#wpUploadFile'+index), inputName: $('#wpDestFile'+index), inputDesc: $('#wpUploadDescription'+index), validator: null, changes: {}});
-				}
-			}
-			if (_files.length == 0) {
-				_showDlg('No has seleccionado ningún archivo para subir.');
-				return false;
-			}
-		} else {
-			_files[0] = {inputFile: $('#wpUploadFile'), inputName: $('#wpDestFile'), inputDesc: $('#wpUploadDescription'), validator: null, changes: {}};
-			_inputDescCommon = null;
-		}
-
-		// Validador
-		for (var i = 0; i < _files.length; i++) {
-			_files[i].validator = new ImageTitleValidator(_files[i].inputName.val());
-			_files[i].validator.validate(_onValidate);
-		}
-		// Se previene el envío. Si las validaciones son correctas se fuerza el envío nuevamente
-		return false;
-	},
-	// Función de validación para cada archivo
-	_onValidate = function(v) {
-		// No hacer nada hasta que no se hayan validado todos
-		for (var i = 0; i < _files.length; i++) {
-			if (!_files[i].validator || !_files[i].validator.completed) {
-				return;
-			}
-		}
-		// Se ha realizado la validación sobre todos los archivos: ahora hay que ir actualizando o mostrando mensajes al usuario
-		// 1. Validar blacklists
-		for (var i = 0; i < _files.length; i++) {
-			var vs = _files[i].validator.validations;
-			if (vs.blacklist == 1) {
-				_showDlg('El nombre del archivo que intenta subir no está permitido. Algunas de las causas son: el nombre del archivo no es descriptivo o es incorrecto, contiene excesivas mayúsculas o es una trainer card. Lee de nuevo las instrucciones de subida de archivos de esta página para ver cómo resolver este problema.', i);
-				return;
-			}
-			if (vs.thumb == 2) { // Thumb existente
-				var szNormName = _files[i].validator.suggestName.gen;
-				_showDlg('El archivo que intenta subir ya existe: <a href="'+mw.util.wikiGetlink(mw.config.get('wgFormattedNamespaces')[mw.config.get('wgNamespaceIds').file.toString()]+':'+szNormName)+'" target="_blank" class="normname"></a>.<br />En ningún caso debe subirse de nuevo un archivo que ya existe con otro copiado de otro sitio y en una resolución inferior.<br />Usa el archivo existente en vez de subirlo de nuevo. Lee la ayuda para saber cómo cambiar el tamaño de la imagen dentro de un artículo.', i, {normname:szNormName});
-				return;
-			} else if (vs.thumb == 1) { // Thumb no existente
-				_showDlg('El archivo que intenta subir parece provenir de otro sitio. El nombre del archivo no es apropiado aquí. Por favor, lee las instrucciones para nombrar el archivo correctamente que encontrarás al inicio de este formulario.', i);
-				return;
-			}
-		}
-		var licencia = ($('#wpLicense').val() || '');
-		// 2. Validaciones específicas por licencia
-		// 2.1. Imágenes de episodio
-		if (licencia == 'ScreenshotTV') {
-			for (var i = 0; i < _files.length; i++) {
-				if (!_files[i].validator.suggestName.ep) {
-					_showDlg('Si la imagen es la captura de un episodio o película, debe nombrarse como se indica en las instrucciones de subida de archivos.', i);
-					return;
-				}
-			}
-		}
-
-		// 3. Actualizar los nombres con las correcciones automáticas aplicadas
-		for (var i = 0; i < _files.length; i++) {
-			_files[i].inputName.val(_files[i].validator.suggestName.gen);
-		}
-
-		// 3.1. En este punto miramos si hay nombres duplicados ya. Luego se mira más adelante si además hay sugerencias de cambios de nombre
-		if (!_validaNombresDuplicados()) {
-			return;
-		}
-
-		// 4. Validaciones y cambios extra. Almacenamos los cambios propuestos, y luego pedimos confirmación al usuario
-		// 4.1. Detectar todos los cambios propuestos
-		var haycambios = false;
-		for (var i = 0; i < _files.length; i++) {
-			var f = _files[i];
-			if (_procesarCambiosEP(f, licencia)) {
-				haycambios = true;
-			} else {
-				// Si no se sugieren cambios para casos específicos, validar licencia-descripción: Uno de los dos debe estar informado
-				if (licencia == '' && _files[i].inputDesc.val() == '' && (!_inputDescCommon || _inputDescCommon.val() == '')) {
-					_showDlg('Debe seleccionar una licencia, o bien incluir la licencia o el origen y las categorías apropiadas en el espacio reservado para la descripción.', i);
-					return;
-				}
-			}
-		}
-
-		// Si no ha saltado ninguna validación anterior, es que está todo correcto para nosotros. Enviamos el formulario.
-		if (!haycambios) {
-			_doSubmit();
-		} else {
-			// 4.2. Mostrar las validaciones al usuario
-			_showChanges();
+		_sortValidators();
+		_results = [];
+		_currentIndex = 0;
+		// Runs validators for each source
+		done = _runValidators();
+		if (done) {
+			return _checkFinalStatus();
 		}
 	},
-	// Determina si se han de realizar cambios en caso de que el nombre sugiera que se trata de una imagen de episodio
-	_procesarCambiosEP = function(file, licencia) {
-		var n = file.validator.suggestName.ep;
-		if (!n) return false;
-		var c = file.changes;
-		var d = file.inputDesc.val();
-		if (_inputDescCommon !== null && _inputDescCommon.val() !== '') {
-			d = _inputDescCommon.val() + '\n' + d;
-		}
-		// Licencia
-		if (licencia != 'ScreenshotTV') {
-			if (!_re_EPlic.test(d)) {
-				c.license = 'ScreenshotTV';
-				c.has = true;
-			}
-		}
-		// Nombre
-		if (n != file.inputName.val()) {
-			c.name = n;
-			c.has = true;
-		}
-		var len = n.indexOf('_');
-		if (len < 0) { // Caso de EP000.png
-			len = n.indexOf('.');
-		}
-		// Categorías
-		var arReEP = _re_EP.exec(n);
-		var epcode = arReEP[0];
-		var arRe = _re_EPcat.exec(d);
-		if (!arRe) {
-			// Agregar categoría
-			c.cat = '[[Categoría:'+epcode+']]';
-			c.has = true;
-		} else if (arRe[0].indexOf(epcode) == -1) {
-			// Reemplazar categoría
-			c.cat = '[[Categoría:'+epcode+']]';
-			c.replcat = arRe[0];
-			c.has = true;
-		}
-		if (c.has) {
-			c.status = 0;
-			c.prompt = 'La imagen parece seguir las convenciones de nombrado de imágenes de episodios o películas. Si realmente se trata de este tipo de imagen, deberías aceptar los cambios propuestos:';
+	// Checks if it needs to display validation issues or end the validation
+	_checkFinalStatus = function() {
+		// There were no async validations
+		if (_results.length === 0) {
+			_endValidation(true);
 			return true;
 		}
+		_log('Displaying validation issues.');
+		mw.loader.using('jquery.ui.dialog', function() {
+			// Display first validation
+			_showDlg(_results[_currentIndex]);
+		});
 		return false;
 	},
-	// Presenta al usuario la lista de cambios sugeridos para que elija. Solo para el primer archivo que tenga cambios sin aceptar o rechazar. Se volverá a ejecutar esta función hasta que no quede ninguno
-	// El status de cada change estará inicialmente a 0 y pasará a ser 1 o -1 según si el usuario acepta o rechaza el cambio
-	_showChanges = function() {
-		for (var i = 0; i < _files.length; i++) {
-			var c = _files[i].changes;
-			if (!c.has || c.status != 0) continue;
-			var cont = c.prompt;
-			var tx = {};
-			cont += '<ul>';
-			if (c.license) {
-				cont += '<li>Cambiar la licencia a <tt class="license"></tt>.</li>';
+	_makeResumeCallback = function(resume_file, resume_validation, resume_originaltitle) {
+		return function(vi) {
+			var done;
+			_log('Async validation ended. Resuming validations.');
+			done = _runValidators(resume_file, resume_validation, resume_originaltitle, vi);
+			if (done) {
+				_checkFinalStatus();
 			}
-			if (c.name) {
-				cont += '<li>Cambiar el nombre por <tt class="name"></tt>.</li>';
+		};
+	},
+	// Run validators against upload information
+	_runValidators = function(resume_file, resume_validation, resume_originaltitle, resume_vi) {
+		var ui, validator, validationinfo, originaltitle;
+		// Runs validators for each source
+		for (var i = (resume_file || 0); i < _validationParams.sources.length; i++) {
+			_log('Validating file '+i);
+			ui = _getUploadInfoToValidate(i);
+			// Hard validations: It must contain a title and file
+			if (!ui.title) {
+				// Clear any existing validations
+				_results = [];
+				_results.push(_getMsg('notitle'));
+				return true;
+			} else if (!ui.filename) {
+				// Clear any existing validations
+				_results = [];
+				_results.push(_getMsg('nofilename', [ ui.title ]));
+				return true;
 			}
-			if (c.cat) {
-				if (c.replcat) {
-					cont += '<li>Reemplazar la categoría <tt class="replcat"></tt> por <tt class="cat"></tt>.</li>';
+			originaltitle = resume_originaltitle || ui.title;
+			for (var vPos = (resume_validation || 0); vPos < _validators.length; vPos++) {
+				validator = _validators[vPos];
+				if (typeof resume_validation != 'undefined') {
+					validationinfo = resume_vi;
+					resume_file = undefined;
+					resume_validation = undefined;
+					resume_originaltitle = undefined;
+					resume_vi = undefined;
 				} else {
-					cont += '<li>Añadir la categoría <tt class="cat"></tt>.</li>';
+					validationinfo = validator.validate(ui);
+				}
+				if (!validationinfo) {
+					continue;
+				}
+				// Check for async validators
+				if (typeof validationinfo == 'function') {
+					_log('Performing async validation.');
+					// They return a function. Call it providing a callback
+					validationinfo(_makeResumeCallback(i, vPos, originaltitle));
+					return false;
+				}
+				// Validators with negative priority perform only minor name corrections
+				if (validator.priority < 0) {
+					if (validationinfo.title) {
+						ui.title = validationinfo.title;
+					}
+				} else {
+					// If upload is disallowed, display dialog here and abort
+					if (validationinfo.disallow) {
+						// We set this property to keep the original title to display to the user
+						validationinfo.originaltitle = originaltitle;
+						validationinfo.sourceindex = i;
+						// Clear any existing validations
+						_results = [];
+						_results.push(validationinfo);
+						return true;
+					}
+					// If there's any change, return it
+					if (validationinfo.title || validationinfo.description || validationinfo.added_categories || validationinfo.removed_categories ||
+						validationinfo.added_templates || validationinfo.removed_templates || validationinfo.license || validationinfo.note) {
+						// We set this property to keep the original title to display to the user
+						validationinfo.originaltitle = originaltitle;
+						// Set source index and save to results
+						validationinfo.sourceindex = i;
+						_results.push(validationinfo);
+						// Skip further validators
+						break;
+					}
 				}
 			}
-			cont += '</ul>';
-			var buttons = {
-				'Subir con los cambios propuestos': function(it) {
-					return function() {
-						_files[i].changes.status = 1;
-						_showChanges();
-					};
-				}(i),
-				'Subir sin cambiar nada': function(it) {
-					return function() {
-						_files[i].changes.status = -1;
-						_showChanges();
-					};
-				}(i),
-				'Cancelar': function() {
-					_closeDlg();
-				}
-			};
-			_showDlg(cont, i, {license:c.license, name:c.name, replcat:c.replcat, cat:c.cat}, buttons);
-			// Salimos del bucle. El dialogo devolverá la ejecución al siguiente elemento
-			return;
-		}
-
-		if (!_validaNombresDuplicados()) {
-			return;
-		}
-
-		// Aquí porque el diálogo se reemplaza en vez de cerrarse.
-		_closeDlg();
-		// Si no pasó por el return de arriba es que se ha tomado ya la decisión sobre todos. Realizar acciones
-		_applyChanges();
-	},
-	// Valida que no haya nombres de archivo duplicados. Debe hacerse al final de todo
-	_validaNombresDuplicados = function() {
-		var nombres = {};
-		for (var i = 0; i < _files.length; i++) {
-			var f = _files[i];
-			var c = f.changes;
-			var n = f.inputName.val();
-			if (c.has && c.status == 1 && c.name) {
-				n = c.name;
-			}
-			if (nombres[n]) {
-				_showDlg('Algunos de los archivos que intentas subir tienen el mismo nombre: <tt class="name"></tt>. Por favor, corrígelo', -1, {name: n});
-				return false;
-			} else {
-				nombres[n] = true;
+			if (originaltitle != ui.title) {
+				// Perform title autocorrection
+				_validationParams.sources[i].inputName.val(ui.title);
 			}
 		}
 		return true;
 	},
-	// Había cambios propuestos y se han aceptado / rechazado. Aquí se aplican los cambios a los campos del formulario
-	_applyChanges = function() {
-		// Primero ver qué hacer con la licencia, pues afecta a todos
-		var licencia = ($('#wpLicense').val() || ''),
-			licenciaComun = null, f, c, lictmp;
-		// Buscar si hay cambio de licencia y contradice la común
-		for (var i = 0; i < _files.length; i++) {
-			c = _files[i].changes;
-			lictmp = licencia;
-			if (c.has && c.status == 1 && c.license && c.license !== licencia) {
-				lictmp = c.license;
+	// Generates an object with all the information of an upload to run the validators
+	_getUploadInfoToValidate = function(index) {
+		var ui = {title: null, filename: null, description: null, categories: [], templates: [], license: null}, arTestRE;
+		if (_validationParams.sources[index].inputName) {
+			ui.title = _normalizeTitle($(_validationParams.sources[index].inputName).val());
+		}
+		if (_validationParams.sources[index].inputFile) {
+			ui.filename = $(_validationParams.sources[index].inputFile).val();
+		}
+		if (_validationParams.sources[index].inputDesc) {
+			ui.description = $(_validationParams.sources[index].inputDesc).val();
+		}
+		if (_validationParams.commonDesc) {
+			ui.description += (ui.description ? '\n' : '') + $(_validationParams.commonDesc).val();
+		}
+		if (ui.description) {
+			// Reset regexp match
+			_reTemplates.lastIndex = 0;
+			// Find templates
+			while ((arTestRE = _reTemplates.exec(ui.description)) !== null) {
+				ui.templates[ui.templates.length] = _normalizeTitle(arTestRE[1]);
 			}
-			if (licenciaComun == null) {
-				licenciaComun = lictmp;
-			} else if (licenciaComun != lictmp) {
-				// se debe especificar licencia por archivo
-				licenciaComun = null;
+			// Reset regexp match
+			_reCategories.lastIndex = 0;
+			// Find categories
+			while ((arTestRE = _reCategories.exec(ui.description)) !== null) {
+				ui.categories[ui.categories.length] = _normalizeTitle(arTestRE[2]);
+			}
+		}
+		if (_validationParams.license) {
+			ui.license = $(_validationParams.license).val();
+		}
+		return ui;
+	},
+	// Normalizes a MediaWiki title
+	_normalizeTitle = function(title) {
+		// Sets first character to uppercase, and replaces underscores by spaces
+		return title.substr(0,1).toUpperCase() + title.substr(1).replace(_reTitleWhiteSpace, ' ');
+	},
+	// Sorts the validator list by priority
+	_sortValidators = function() {
+		var priority, reorder;
+		if (_validators.length === 0) {
+			return;
+		}
+		// Check first if they're already ordered, so we don't need to reorder them again if the list of validators hasn't changed
+		reorder = false;
+		priority = _validators[0];
+		for (var i = 1; i < _validators.length; i++) {
+			if (_validators[i].priority < priority) {
+				reorder = true;
 				break;
 			}
+			priority = _validators[i].priority;
 		}
-		// Si en todos se ha de agregar la misma categoría, la marcamos para que se agregue en la descripción común
-		// Si hay que agregar categorías diferentes o solo en algunas, o hay que reemplazar, movemos el texto a la descripción individual
-		var bAgregarCatComun = (_inputDescCommon !== null), catComun = null, bAlgunReemplazo = false;
-		for (var i = 0; i < _files.length; i++) {
-			c = _files[i].changes;
-			if (c.has && c.status == 1) {
-				if (c.replcat) {
-					bAlgunReemplazo = true;
-				}
-				if (bAgregarCatComun && c.cat) {
-					if (catComun !== null && catComun != c.cat) {
-						bAgregarCatComun = false;
-					}
-					catComun = c.cat;
-				} else {
-					bAgregarCatComun = false;
-				}
-			} else {
-				bAgregarCatComun = false;
+		if (reorder) {
+			_validators.sort(_validatorComparePriority);
+		}
+	},
+	// Compares priority between 2 validators. Used as a sort callback function
+	_validatorComparePriority = function(a, b) {
+		if (a.priority == b.priority) {
+			return 0;
+		}
+		return a.priority > b.priority ? 1 : -1;
+	},
+	// registers one validator
+	_registerSingleValidator = function(validator) {
+		if (!validator.name || typeof validator.validate != 'function') return;
+		for (var i = 0; i < _validators.length; i++) {
+			if (_validators[i].name === validator.name) {
+				_validators[i] = validator;
+				return;
 			}
 		}
-		// Si hay que hacer reemplazos, ya no consideramos categoría común
-		if (bAlgunReemplazo && bAgregarCatComun) {
-			bAgregarCatComun = false;
-		}
-		// Mover descripción común a la individual si hay reemplazos
-		if (bAlgunReemplazo && _inputDescCommon !== null && _inputDescCommon.val() !== '') {
-			for (var i = 0; i < _files.length; i++) {
-				_files[i].inputDesc.val(_inputDescCommon.val() + '\n' + _files[i].inputDesc.val())
+		_validators[_validators.length] = validator;
+	},
+	// Registers validators (single or array)
+	_registerValidators = function(validators) {
+		if (validators instanceof Array) {
+			for (var i = 0; i < validators.length; i++) {
+				_registerSingleValidator(validators[i]);
 			}
-			_inputDescCommon.val('');
-		}
-		// Si hay categoría común, agregar
-		if (bAgregarCatComun) {
-			if (_inputDescCommon.val().length > 0) {
-				_inputDescCommon.val(_inputDescCommon.val() + '\n' + catComun);
-			} else {
-				_inputDescCommon.val(catComun);
-			}
-		}
-		if (licenciaComun !== null) {
-			// Hay una licencia común, la informamos
-			$('#wpLicense').val(licenciaComun);
 		} else {
-			// Seleccionar el no informado
-			$('#wpLicense').children('option').get(0).selected = true;
+			_registerSingleValidator(validators);
 		}
-		for (var i = 0; i < _files.length; i++) {
-			f = _files[i];
-			c = f.changes;
-			if (licencia != '' && licenciaComun === null && !(c.has && c.status == 1 && c.license)) {
-				// Si este archivo no necesita cambios de licencia y no hay licencia común pero la licencia
-				// está establecida, se debe especificar licencia por archivo cambiando la licencia a individual
-				f.inputDesc.val($.trim(f.inputDesc.val()+'\n== Licencia ==\n{{'+licencia+'}}'));
-			}
-			if (c.has) {
-				if (c.status == 1) {
-					// El usuario acepta los cambios
-					if (c.license && licenciaComun === null) {
-						f.inputDesc.val($.trim(f.inputDesc.val()+'\n== Licencia ==\n{{'+c.license+'}}'));
-					}
-					if (c.name) {
-						f.inputName.val(c.name);
-					}
-					if (c.replcat) {
-						f.inputDesc.val(f.inputDesc.val().replace(c.replcat, c.cat));
-					} else if (c.cat && !bAgregarCatComun) {
-						f.inputDesc.val(f.inputDesc.val().length ? (f.inputDesc.val() + '\n' + c.cat) : c.cat);
-					}
-				} else {
-					// El usuario rechaza los cambios
-					if (c.license) {
-						f.inputDesc.val('<!-- Se ha sugerido el cambio de licencia a '+c.license+' pero se ha omitido -->\n'+f.inputDesc.val());
-					}
-					if (c.name) {
-						f.inputDesc.val('<!-- Se ha sugerido el cambio de nombre a '+c.name+' pero se ha omitido -->\n'+f.inputDesc.val());
-					}
-					if (c.replcat) {
-						f.inputDesc.val('<!-- Se ha sugerido reemplazar la categoría '+c.replcat+' por '+c.cat+' pero se ha omitido -->\n'+f.inputDesc.val());
-					} else if (c.cat) {
-						f.inputDesc.val('<!-- Se ha sugerido añadir la categoría '+c.cat+' pero se ha omitido -->\n'+f.inputDesc.val());
-					}
-				}
-			}
-		}
-		_doSubmit();
 	},
-	// Envía el formulario
-	_doSubmit = function() {
-		_unlock();
-		_skip = true;
-		if (mw.config.get('wgCanonicalSpecialPageName','') == 'MultipleUpload') {
-			_preSubmitMultipleUploadForm();
+	/*
+	 * Sets the list of messages used in dialogs, etc
+	 * */
+	_setMessages = function(msgs) {
+		if (msgs) {
+			_messages = msgs;
 		}
-		// No se puede hacer la llamada directa, pues si no hay validación asíncrona aun estamos dentro del evento submit, y este al cancelar el evento evitará que podamos hacer otro submit seguido
-		setTimeout(function(){ _submitBtn.click(); }, 100);
 	},
-	// Muestra la ventana con el mensaje al usuario.
-	// @param cont [string]: contenido HTML
-	// @param index [number]: índice del archivo (para que muestre el archivo al que va dirigida la validación)
-	// @param texts [object]{name,value}: claves-valor para reemplazar elementos del parámetro @{cont}
-	// @param buttons [object] botones presentes en el dialogo
-	_showDlg = function(cont, index, texts, buttons) {
-		var filename = '';
-		texts = texts || {};
-		if (typeof index == 'number' && index >= 0 && _files.length > 1) {
-			texts['filename'] = _files[index].inputName.val();
-			filename = '<tt>Archivo: <span class="filename"></span></tt><br />';
+	/*
+	 * Displays a modal dialog
+	 * @param validationresult [object/string]: validation result or string with text to display
+	 * */
+	_showDlg = function(vi) {
+		var body, buttons = {};
+		if (typeof vi == 'string') {
+			body = $('<div>').text(vi);
+			buttons[_getMsg('backtoform')] = _closeDlg;
+		} else if (vi.disallow) {
+			body = $('<div>').text(_getMsg('disallowed', [vi.originaltitle])).append($('<span>').text(vi.disallow));
+			buttons[_getMsg('backtoform')] = _closeDlg;
+		} else {
+			body = _buildValidationForm(vi);
+			buttons[_getMsg('acceptproposal')] = _acceptProposal;
+			buttons[_getMsg('declineproposal')] = _declineProposal;
+			buttons[_getMsg('backtoform')] = _closeDlg;
 		}
+		_closing = false;
 		if (_dlg) {
-			_dlg.html(filename+cont).dialog('open').dialog('option', {
+			_dlg.empty().append(body).dialog('open').dialog('option', {
 				height: 'auto',
 				position: 'center',
-				buttons: buttons,
+				buttons: buttons
 			});
 		} else {
-			_dlg = $('<div id="UploadValidatorDlg"></div>').html(filename+cont).dialog({
+			_dlg = $('<div id="UploadValidatorDlg"></div>').append(body).appendTo(document.body).dialog({
 				modal: true,
 				buttons: buttons,
-				title: document.title,
-				width: 500,
+				title: _getMsg('dialogtitle'),
+				width: 750,
 				close: function() {
-					_unlock();
+					if (!_closing) {
+						_endValidation(false);
+					}
 				}
 			});
-		}
-		for (var elid in texts) {
-			if (typeof texts[elid] == 'string') {
-				_dlg.find('.'+elid).text(texts[elid]).removeClass(elid);
-			}
 		}
 	},
 	_closeDlg = function() {
@@ -655,135 +299,350 @@ var _lock = false,
 			_dlg.dialog('close');
 		}
 	},
-	_unlock = function() {
-		if (_lock) {
-			_lock = false;
-			_submitBtn.removeAttr('disabled');
+	_buildValidationForm = function(vi) {
+		var $body = $('<div>'), $ul = $('<ul>'), i;
+		if (vi.title) {
+			$ul.append(_buildUIItem(_getMsg('titlechange', [vi.title]), 'title'));
 		}
-	},
-	// Modifica el formulario de Special:MultipleUpload para tener descripciones por separado
-	_setupMultipleUploadForm = function() {
-		var t = document.getElementById('mw-htmlform-source');
-		if (!t) return;
-		var oStoredDescs = _parseMultipleUploadFormHack();
-		var rsl = t.tBodies[0].rows.length - 2; // Excluir 2 filas del final (upload-permitted y max-size)
-		var lblDesc = $('#wpUploadDescription').parent().prev().children('label');
-		_calculateFieldHeight();
-		// Bucle hacia atrás, porque se van insertando rows. Cada archivo son 2 filas: file-input y nombre del archivo
-		for (var fieldNum = ((rsl / 2) - 1), rowPos = (rsl - 1); rowPos >= 0; rowPos -= 2, fieldNum--) {
-			var tr = t.tBodies[0].insertRow(rowPos+1);
-			var desc = oStoredDescs[_normalizePageName( $('#wpDestFile'+fieldNum.toString()).val() || '' )];
-			var txtDesc = $('<textarea id="wpUploadDescription'+fieldNum.toString()+'" style="width:98%; height:'+_fieldHeight+'px;"></textarea>');
-			$(tr.insertCell(0)).addClass('mw-input').append(txtDesc);
-			$(tr.insertCell(0)).addClass('mw-label').append(lblDesc.clone().attr('for', 'wpUploadDescription'+fieldNum.toString()));
-			$(tr).addClass('mw-htmlform-field-HTMLTextField');
-			if (desc && desc != '') {
-				txtDesc.height(_fieldHeight * 3).val(desc);
+		if (vi.license) {
+			$ul.append(_buildUIItem(_getMsg('licensechange', [vi.license]), 'license'));
+		}
+		if (vi.description) {
+			$ul.append(_buildUIItem(_getMsg('descriptionchange', [vi.description]), 'description'));
+		} else {
+			if (vi.added_categories) {
+				for (i = 0; i < vi.added_categories.length; i++) {
+					$ul.append(_buildUIItem(_getMsg('categoryaddchange', [vi.added_categories[i]]), 'category-add-'+i.toString()));
+				}
 			}
-			txtDesc.bind('focus', _onMultiDescFocus).bind('blur', _onMultiDescBlur);
-		}
-		lblDesc.append('<br /><small>(común para todos los<br />archivos, adicional a cada<br />descripción independiente)</small>');
-		if (oStoredDescs['*'] !== undefined) {
-			$('#wpUploadDescription').val(oStoredDescs['*']);
-		}
-	},
-	// Obtiene la altura por defecto de un campo de texto simple
-	_calculateFieldHeight = function() {
-		if (_fieldHeight === 0) {
-			_fieldHeight = $('#wpDestFile0').height();
-		}
-	},
-	// Evento cuando la descripción obtiene el foco
-	_onMultiDescFocus = function(e) {
-		$field = $(this), h = _fieldHeight * 3;
-		if ($field.height() < h) {
-			$field.queue('fx', []).stop().animate({height: h}, 750, 'swing',
-				function() { $(this).css('overflow', 'auto') });
-		}
-	},
-	// Evento cuando la descripción pierde el foco
-	_onMultiDescBlur = function(e) {
-		$field = $(this);
-		if ($field.height() > _fieldHeight && $.trim($field.val()).length == 0) {
-			$field.css('overflow', 'hidden').queue('fx', []).stop().animate({height: _fieldHeight}, 750, 'swing');
-		}
-	},
-	// Obtiene el texto de la descripción común de Special:MultipleUpload y busca el #switch: que aporta la descripción individualizada
-	_parseMultipleUploadFormHack = function() {
-		var oRet = {},
-			tmpl = $('#wpUploadDescription').val(),
-			idx = -1,
-			tag = '',
-			prevname = '',
-			previdx = tmpl.indexOf('{{subst:#switch:{{subst:PAGENAME}}|'),
-			comun = null;
-		if (previdx == -1) return oRet;
-		comun = tmpl.substr(0, previdx);
-		for (var i = 0; document.getElementById('wpDestFile'+i.toString()) !== null; i++) {
-			var n = _normalizePageName($('#wpDestFile'+i.toString()).val());
-			if (n.length) {
-				tag = '|' + n + ' = ';
-				idx = tmpl.indexOf(tag, previdx);
-				if (idx != -1) {
-					if (prevname != '') {
-						oRet[prevname] = tmpl.substring(previdx, idx);
-					}
-					prevname = n;
-					previdx = idx + tag.length;
-				} else {
-					// No se puede determinar de forma fiable :(
-					return oRet;
+			if (vi.removed_categories) {
+				for (i = 0; i < vi.removed_categories.length; i++) {
+					$ul.append(_buildUIItem(_getMsg('categoryremchange', [vi.removed_categories[i]]), 'category-rem-'+i.toString()));
+				}
+			}
+			if (vi.added_templates) {
+				for (i = 0; i < vi.added_templates.length; i++) {
+					$ul.append(_buildUIItem(_getMsg('templateaddchange', [vi.added_templates[i]]), 'template-add-'+i.toString()));
+				}
+			}
+			if (vi.removed_templates) {
+				for (i = 0; i < vi.removed_templates.length; i++) {
+					$ul.append(_buildUIItem(_getMsg('templateremchange', [vi.removed_templates[i]]), 'template-rem-'+i.toString()));
 				}
 			}
 		}
-		if (prevname != '') {
-			tag = '|}}';
-			idx = tmpl.indexOf(tag, previdx);
-			if (idx != -1) {
-				oRet[prevname] = tmpl.substring(previdx, idx);
+		if ($ul.children().length) {
+			$body.append($('<p>').text(_getMsg('filetypedescr', [vi.originaltitle, vi.filetype])));
+			$body.append($ul);
+			if (vi.note) {
+				$body.append($('<p>').text(_getMsg('note', [vi.note])));
 			}
+		} else if (vi.note) {
+			$body.append($('<p>').text(_getMsg('noteonly', [vi.originaltitle, vi.filetype, vi.note])));
 		}
-		// Guardamos el texto común
-		oRet['*'] = comun;
-		return oRet;
+		return $body;
 	},
-	// Incluye cada descripción individual en la descripción común, dentro de un #switch:
-	_preSubmitMultipleUploadForm = function() {
-		var txtdesc = '{{subst:#switch:{{subst:PAGENAME}}',
-			comun = $.trim($('#wpUploadDescription').val()),
-			haydesc = false;
-		for (var i = 0; document.getElementById('wpDestFile'+i.toString()) !== null; i++) {
-			var desc = $.trim( $('#wpUploadDescription'+i.toString()).val() );
-			var filename = $('#wpDestFile'+i.toString()).val();
-			if (desc.length && filename && filename.length) {
-				haydesc = true;
-				txtdesc += '|' + _normalizePageName(filename) + ' = ' + desc;
+	_buildUIItem = function(text, prop) {
+		var $li = $('<li>'), $label = $('<label>'), $input = $('<input type="checkbox" checked="checked">');
+		$label.text(text).appendTo($li);
+		$input.attr({'name': prop}).prependTo($label);
+		return $li;
+	},
+	/*
+	 * Stores on results, in a accepted property, what checkboxes are active on the form
+	 * */
+	_storeUserChoice = function() {
+		var res = _results[_currentIndex], $inputs = _dlg.find('input'), nameparts, field;
+		res.accepted = { added_categories: [], removed_categories: [], added_templates: [], removed_templates: [] };
+		for (var i = 0; i < $inputs.length; i++) {
+			if (!$inputs[i].checked) {
+				continue;
 			}
-		}
-		txtdesc += '|}}'
-		if (haydesc) {
-			if (comun.length) {
-				comun += '\n' + txtdesc;
+			nameparts = $inputs[i].name.split('-');
+			if (nameparts[0] == 'title' || nameparts[0] == 'license' || nameparts[0] == 'description') {
+				res.accepted[nameparts[0]] = true;
 			} else {
-				comun = txtdesc;
+				field = nameparts[1] == 'add' ? 'added_' : 'removed_';
+				field += nameparts[0] == 'category' ? 'categories' : 'templates';
+				res.accepted[field][parseInt(nameparts[2], 10)] = true;
 			}
 		}
-		$('#wpUploadDescription').val(comun);
 	},
-	// Convierte la primera letra en mayúscula y los guiones bajos en espacios
-	_normalizePageName = function(page) {
-		var ret = '';
-		if (page.length) {
-			ret += page.substr(0, 1).toUpperCase();
+	/*
+	 * Accepts the proposed changes. If there are more files to validate, goes to the next one. Otherwise, apply changes
+	 * */
+	_acceptProposal = function() {
+		_storeUserChoice();
+		if (_currentIndex < _results.length - 1) {
+			_currentIndex++;
+			_showDlg(_results[_currentIndex]);
+		} else {
+			_closing = true;
+			_closeDlg();
+			_applyChanges();
 		}
-		if (page.length > 1) {
-			ret += page.substr(1);
+	},
+	/*
+	 * Declines the proposed changes. If there are more files to validate, goes to the next one. Otherwise, apply changes
+	 * */
+	_declineProposal = function() {
+		_results[_currentIndex].accepted = { added_categories: [], removed_categories: [], added_templates: [], removed_templates: [] };
+		if (_currentIndex < _results.length - 1) {
+			_currentIndex++;
+			_showDlg(_results[_currentIndex]);
+		} else {
+			_closing = true;
+			_closeDlg();
+			_applyChanges();
 		}
-		ret = ret.replace(/_/g, ' ');
-		return ret;
+	},
+	/*
+	 * Apply changes and calls the validation callback
+	 * */
+	_applyChanges = function() {
+		var commonLicense = null, tmpLicense, currentCommonLicense, res, desc, arTestRE, needsIndividualDescriptions = false, hasValidation;
+		// Check license in case we could set a common one
+		currentCommonLicense = _validationParams.license.val();
+		for (var i = 0; i < _results.length; i++) {
+			res = _results[i];
+			// We start with the common license
+			tmpLicense = currentCommonLicense;
+			// If a validation changes license, use that
+			if (res.license && res.accepted.license) {
+				tmpLicense = res.license;
+				// If there are unmodified files, that license won't be changed, so we can't set the common license if it changes for some files
+				if (_results.length != _validationParams.sources.length) {
+					commonLicense = null;
+					break;
+				}
+			}
+			if (commonLicense === null) {
+				// First time we pass here: set our current "common" license
+				commonLicense = tmpLicense;
+			} else if (commonLicense != tmpLicense) {
+				// If there are different licenses, we can't specify a common one
+				commonLicense = null;
+				break;
+			}
+		}
+		// If there's no common license, unset it
+		if (commonLicense === null) {
+			_validationParams.license.val('');
+			needsIndividualDescriptions = true;
+		}
+		if (_validationParams.commonDesc && _validationParams.commonDesc.val()) {
+			if (!needsIndividualDescriptions) {
+				// Check if there are template, category or description changes. That will require individual descriptions,
+				// so we don't have to keep track of changes in common description and individual descriptions
+				for (var ir = 0; ir < _results.length; ir++) {
+					res = _results[ir];
+					if (res.description) {
+						if (res.accepted.description) {
+							needsIndividualDescriptions = true;
+							break;
+						}
+					} else {
+						// added_* properties aren't checked because they don't alter the common description
+						if (res.removed_categories && res.accepted.removed_categories) {
+							for (var irc1 = 0; irc1 < res.removed_categories.length; irc1++) {
+								if (res.accepted.removed_categories[irc1]) {
+									needsIndividualDescriptions = true;
+									break;
+								}
+							}
+						}
+						if (!needsIndividualDescriptions && res.removed_templates && res.accepted.removed_templates) {
+							for (var irt1 = 0; irt1 < res.removed_templates.length; irt1++) {
+								if (res.accepted.removed_templates[irt1]) {
+									needsIndividualDescriptions = true;
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+			if (needsIndividualDescriptions) {
+				// In that case, copy the common description to each individual description
+				for (var is = 0; is < _validationParams.sources.length; is++) {
+					_validationParams.sources[is].inputDesc.val(_validationParams.sources[is].inputDesc.val() + '\n' + _validationParams.commonDesc.val());
+				}
+				_validationParams.commonDesc.val('');
+			}
+		}
+		for (var ir2 = 0; ir2 < _results.length; ir2++) {
+			res = _results[ir2];
+			if (res.title) {
+				if (res.accepted.title) {
+					_validationParams.sources[res.sourceindex].inputName.val(res.title);
+				} else {
+					_appendToTextField(_validationParams.sources[res.sourceindex].inputDesc, _getMsg('titlechangedeclined', [ res.title ]));
+				}
+			}
+			if (res.license && res.accepted.license && commonLicense === null) {
+				_appendToTextField(_validationParams.sources[res.sourceindex].inputDesc, '\n' + _getMsg('licenseInsertText', [ '{{' + res.license + '}}' ]));
+			} else if (commonLicense === null && currentCommonLicense) {
+				// Restore license for this file if we're clearing the common license
+				_appendToTextField(_validationParams.sources[res.sourceindex].inputDesc, '\n' + _getMsg('licenseInsertText', [ '{{' + currentCommonLicense + '}}' ]));
+			}
+			if (res.description) {
+				if (res.accepted.description) {
+					_validationParams.sources[res.sourceindex].inputDesc.val(res.description);
+				}
+			} else {
+				if (res.removed_categories) {
+					for (var irc = 0; irc < res.removed_categories.length; irc++) {
+						if (res.accepted.removed_categories[irc]) {
+							// Reset regexp match
+							_reCategories.lastIndex = 0;
+							// Find categories
+							desc = _validationParams.sources[res.sourceindex].inputDesc.val();
+							while ((arTestRE = _reCategories.exec(desc)) !== null) {
+								if (_normalizeTitle(arTestRE[2]) == res.removed_categories[irc]) {
+									desc = desc.substr(0, _reCategories.lastIndex - arTestRE[0].length) + desc.substr(_reCategories.lastIndex);
+									_reCategories.lastIndex -= arTestRE[0].length;
+								}
+							}
+							_validationParams.sources[res.sourceindex].inputDesc.val(desc);
+						} else {
+							_appendToTextField(_validationParams.sources[res.sourceindex].inputDesc, _getMsg('categoryremdeclined', [ res.removed_categories[irc] ]));
+						}
+					}
+				}
+				if (res.added_categories) {
+					for (var iac = 0; iac < res.added_categories.length; iac++) {
+						if (res.accepted.added_categories[iac]) {
+							_appendToTextField(_validationParams.sources[res.sourceindex].inputDesc, '[[' + mw.config.get('wgFormattedNamespaces')['14'] + ':' + res.added_categories[iac] + ']]');
+						} else {
+							_appendToTextField(_validationParams.sources[res.sourceindex].inputDesc, _getMsg('categoryadddeclined', [ res.added_categories[iac] ]));
+						}
+					}
+				}
+				if (res.removed_templates) {
+					for (var irt = 0; irt < res.removed_templates.length; irt++) {
+						if (res.accepted.removed_templates[irt]) {
+							// Reset regexp match
+							_reTemplates.lastIndex = 0;
+							// Find templates
+							desc = _validationParams.sources[res.sourceindex].inputDesc.val();
+							while ((arTestRE = _reTemplates.exec(desc)) !== null) {
+								if (_normalizeTitle(arTestRE[1]) == res.removed_templates[irt]) {
+									desc = desc.substr(0, _reTemplates.lastIndex - arTestRE[0].length) + desc.substr(_reTemplates.lastIndex);
+									_reCategories.lastIndex -= arTestRE[0].length;
+								}
+							}
+							_validationParams.sources[res.sourceindex].inputDesc.val(desc);
+						} else {
+							_appendToTextField(_validationParams.sources[res.sourceindex].inputDesc, _getMsg('templateremdeclined', [ res.removed_templates[irt] ]));
+						}
+					}
+				}
+				if (res.added_templates) {
+					for (var iat = 0; iat < res.added_templates.length; iat++) {
+						if (res.accepted.added_templates[iat]) {
+							_appendToTextField(_validationParams.sources[res.sourceindex].inputDesc, '{{' + res.added_templates[iat] + '}}');
+						} else {
+							_appendToTextField(_validationParams.sources[res.sourceindex].inputDesc, _getMsg('templateadddeclined', [ res.added_templates[iat] ]));
+						}
+					}
+				}
+			}
+		}
+		if (commonLicense) {
+			// Apply common license
+			_validationParams.license.val(commonLicense);
+		} else if (commonLicense === null && currentCommonLicense) {
+			// Restore license for files not in validation if we're clearing the common license
+			for (var is2 = 0; is2 < _validationParams.sources.length; is2++) {
+				hasValidation = false;
+				for (var jr2 = 0; jr2 < _results.length; jr2++) {
+					if (_results[jr2].sourceindex == is2) {
+						hasValidation = true;
+						break;
+					}
+				}
+				if (!hasValidation) {
+					_appendToTextField(_validationParams.sources[i].inputDesc, '\n' + _getMsg('licenseInsertText', [ '{{' + currentCommonLicense + '}}' ]));
+				}
+			}
+		}
+		_endValidation(true);
+	},
+	/*
+	 * Appends text to a text field
+	 * */
+	_appendToTextField = function($field, newtext) {
+		var text = $field.val();
+		if (newtext) {
+			if (text) {
+				$field.val(text + newtext);
+			} else {
+				$field.val(newtext);
+			}
+		}
+	},
+	/*
+	 * Sends the form when done
+	 * */
+	_endValidation = function(success) {
+		_log('End validation (' + success + ')');
+		if (_validationParams.callback) {
+			_validationParams.callback(success);
+		}
+	},
+	/*
+	 * Gets the message contents
+	 * */
+	_getMsg = function(msg, vars, htmlencode) {
+		var text;
+		if (!(msg in _messages)) {
+			text = '<' + msg + '>';
+		} else {
+			text = _messages[msg];
+		}
+		if (vars) {
+			for (var i = 0; i < vars.length; i++) {
+				text = text.replace('$' + (i+1).toString(), vars[i]);
+			}
+		}
+		if (htmlencode) {
+			text = text.replace(/</g, '&lt;').replace(/>/g, '&gt:').replace(/"/g, '&quot;');
+		}
+		return text;
 	};
 
-	(typeof(window.safeOnLoadHook)=='function'?safeOnLoadHook:$)(_init);
+	$(_init);
 
-})(jQuery);
-/* </pre> */
+	return {
+		registerValidators: _registerValidators,
+		setMessages: _setMessages,
+		validate: _validate
+	};
+})(jQuery, mw);
+
+window.UploadValidator.setMessages({
+	dialogtitle: 'Validación de subida de archivos',
+	disallowed: 'El archivo $1 no puede subirse por el siguiente motivo: ',
+	notitle: 'Debes indicar el nombre del archivo destino.',
+	nofilename: 'Debes seleccionar un archivo para subir $1.',
+	backtoform: 'Cancelar',
+	filetypedescr: 'El sistema ha detectado que el archivo $1 es de tipo $2 y propone realizar las siguientes correcciones de forma automática:',
+	note: 'También se realiza la siguiente observación: $1',
+	noteonly: 'El sistema ha detectado que el archivo $1 es de tipo $2. Se realiza la siguiente observación: $3.',
+	titlechange: 'Cambiar el nombre por $1',
+	descriptionchange: 'Cambiar la descripción por $1',
+	licensechange: 'Cambiar la licencia por $1',
+	categoryaddchange: 'Agregar la categoría $1',
+	categoryremchange: 'Quitar la categoría $1',
+	templateaddchange: 'Agregar la plantilla $1',
+	templateremchange: 'Quitar la plantilla $1',
+	acceptproposal: 'Subir con los cambios propuestos',
+	declineproposal: 'Subir sin realizar cambios',
+	licenseInsertText: '== Licencia ==\n$1',
+	titlechangedeclined: '\n<!-- Se ha sugerido el cambio de nombre a $1 pero se ha omitido -->',
+	categoryadddeclined: '\n<!-- Se ha sugerido agregar la categoría $1 pero se ha omitido -->',
+	templateadddeclined: '\n<!-- Se ha sugerido agregar la plantilla $1 pero se ha omitido -->',
+	categoryremdeclined: '\n<!-- Se ha sugerido eliminar la categoría $1 pero se ha omitido -->',
+	templateremdeclined: '\n<!-- Se ha sugerido eliminar la plantilla $1 pero se ha omitido -->'
+});
+// </pre>
