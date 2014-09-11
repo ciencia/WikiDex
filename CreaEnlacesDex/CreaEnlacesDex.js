@@ -150,13 +150,15 @@ window.CreaEnlacesDex = (function() {
 		return sz.join('');
 	},
 	toCamel = function(text) {
-		// Si tiene guiones, no lo ponemos en mayúsculas
-		if (text.indexOf('-') != -1) {
-			return text;
-		}
-		return text.replace(new RegExp('\\b(\\w)', 'g'), function(s, p) {
-			return p.toUpperCase();
+		var res = text.substr(0, 1).toUpperCase() + text.substr(1).toLowerCase();
+		res = res.replace(new RegExp('([ \-])(\\w+)', 'g'), function(match, p1, p2, offset, originalStr) {
+			// Omite palabra después de prefijo de 1 letra (U-turn) o la palabra "or" (Trick-or-Treat)
+			if (offset == 1 || p2 == 'or') {
+				return match;
+			}
+			return p1 + p2.substr(0, 1).toUpperCase() + p2.substr(1);
 		});
+		return res;
 	},
 	genPoke = function() {
 		var m = _vars.nombre,
