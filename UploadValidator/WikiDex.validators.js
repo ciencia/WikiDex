@@ -219,7 +219,7 @@ mw.config.get('wgValidators').push({
 			if (!hasLic) {
 				res.license = _epLicense;
 			}
-			if (res.license || res.removed_categories.length > 0 || (res.added_categories in res && res.added_categories.length > 0) || res.title) {
+			if (res.license || res.removed_categories.length > 0 || ('added_categories' in res && res.added_categories.length > 0) || res.title) {
 				res.note = 'La imagen parece seguir las convenciones de nombrado de imágenes de episodios o películas. Si realmente se trata de este tipo de imagen, deberías aceptar los cambios propuestos.';
 				return res;
 			}
