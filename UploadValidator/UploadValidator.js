@@ -1,5 +1,5 @@
 /* <pre>
- * UploadValidator v4.0: Realiza validaciones en el momento de subir archivos, proporcionando sugerencias de nombrado si
+ * UploadValidator v4.1: Realiza validaciones en el momento de subir archivos, proporcionando sugerencias de nombrado si
  *    es posible, categorización o licencia.
  * Copyright (c) 2010 - 2014 Jesús Martínez (User:Ciencia_Al_Poder)
  * This program is free software; you can redistribute it and/or modify
@@ -269,8 +269,16 @@ window.UploadValidator = (function($, mw) {
 			buttons[_getMsg('backtoform')] = _closeDlg;
 		} else {
 			body = _buildValidationForm(vi);
-			buttons[_getMsg('acceptproposal')] = _acceptProposal;
-			buttons[_getMsg('declineproposal')] = _declineProposal;
+			if (vi.title || vi.license || vi.description || (vi.added_categories && vi.added_categories.length) ||
+				(vi.removed_categories && vi.removed_categories.length) || (vi.added_templates && vi.added_templates.length) ||
+				(vi.removed_templates && vi.removed_templates.length)
+			) {
+				buttons[_getMsg('acceptproposal')] = _acceptProposal;
+				buttons[_getMsg('declineproposal')] = _declineProposal;
+			} else {
+				// If nothing to do, just display the note with no choice to accept/decline
+				buttons[_getMsg('continueupload')] = _declineProposal;
+			}
 			buttons[_getMsg('backtoform')] = _closeDlg;
 		}
 		_closing = false;
@@ -638,6 +646,7 @@ window.UploadValidator.setMessages({
 	templateremchange: 'Quitar la plantilla $1',
 	acceptproposal: 'Subir con los cambios propuestos',
 	declineproposal: 'Subir sin realizar cambios',
+	continueupload: 'Subir archivo',
 	licenseInsertText: '== Licencia ==\n$1',
 	titlechangedeclined: '\n<!-- Se ha sugerido el cambio de nombre a $1 pero se ha omitido -->',
 	categoryadddeclined: '\n<!-- Se ha sugerido agregar la categoría $1 pero se ha omitido -->',
