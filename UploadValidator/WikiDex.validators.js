@@ -296,4 +296,23 @@ mw.config.get('wgValidators').push({
 	});
 	
 })(mw.config.get('wgValidators'));
+
+(function(wgValidators) {
+	'use strict';
+
+	wgValidators.push({
+		name: 'ScreenshotJuegoFormatoJPG',
+		priority: 100,
+		validate: function(ui) {
+			if (ui.license == 'ScreenshotJuego' && ui.title.length > 4 && ui.title.substr(ui.title.length - 3, 3) == 'jpg') {
+				return {
+					filetype: 'Captura de un videojuego',
+					note: 'Las capturas de videojuego deben subirse en formato PNG porque el formato JPG se ve mal en las miniaturas. Si subes esta imagen en formato JPG lo más probable es que sea borrada y sustituida por otra de mejor calidad'
+				};
+			}
+		}
+	});
+
+})(mw.config.get('wgValidators'));
+
 // </pre>
