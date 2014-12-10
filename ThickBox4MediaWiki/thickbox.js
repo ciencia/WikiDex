@@ -1,10 +1,10 @@
 /* <pre>
- * Thickbox4MediaWiki v3.5 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
+ * Thickbox4MediaWiki v3.6 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
  * Copyright (c) 2010 - 2014 Jesús Martínez (User:Ciencia_Al_Poder), Original Thickbox Copyright (c) 2007 Cody Lindley
  * Licensed under the MIT License: http://www.opensource.org/licenses/mit-license.php
 */
 window.Thickbox = (function($) {
-	var _version = '3.5',
+	var _version = '3.6',
 	// Dimensiones mínimas
 	_minWidth = 210,
 	// Margen entre la imagen y el borde de ThickBox
@@ -313,12 +313,19 @@ window.Thickbox = (function($) {
 		return [w,h];
 	},
 	_getUrlFromThumb = function(thumb) {
+		if (thumb.indexOf('.svg/') != -1) {
+			return thumb;
+		}
+		// Wikia
+		return thumb.replace(/\/scale-to-width\/\d+/, '');
+		/*
 		// Si la imagen no es thumb, o bien es un SVG, usamos la imagen tal cual.
 		if (thumb.indexOf('/thumb/') == -1 || thumb.indexOf('.svg/') != -1 ) {
 			return thumb;
 		}
 		var urlparts = thumb.split('/');
 		return thumb.replace('/thumb/','/').replace('/'+urlparts[urlparts.length-1], '');
+		*/
 	},
 	_getCaptionThumb = function(elem) {
 		return elem.closest('.thumbinner').find('> .thumbcaption').clone().find('> div.magnify').remove().end().html();
@@ -446,7 +453,7 @@ window.Thickbox = (function($) {
 		}
 		if (_isTag(target,'img')) { // Gallery o thumb
 			a = target.parentNode;
-			if (!_isTag(a,'a') || !_isClass(a,'image')) {
+			if (!_isTag(a,'a') || !_isClass(a,'image') || _isClass(a,'link-internal')) {
 				return _hideImgTip();
 			}
 			t = $(target);
