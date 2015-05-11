@@ -1,6 +1,6 @@
 /* <pre>
- * SVGDirecto v1.0
- * Copyright (c) 2013 Jesús Martínez (User:Ciencia_Al_Poder)
+ * SVGDirecto v1.1
+ * Copyright (c) 2013 - 2015 Jesús Martínez (User:Ciencia_Al_Poder)
  *
  * Incluye una imagen SVG directamente en la página en vez de la imagen PNG (solo navegadores compatibles)
  * 
@@ -24,9 +24,15 @@ var SVGDirecto = (function() {
 		return document.implementation && document.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#Shape", "1.0");
 	},
 	_convertirImagen = function(idx, img) {
-		var $img = $(img), src = ($img.attr('data-src') || $img.attr('src')), urlparts = src.split('/'), imgpart = urlparts[urlparts.length - 2], lastIndex = imgpart.lastIndexOf('.'), svgsrc, $a, $o;
-		if (lastIndex > -1 && imgpart.substr(lastIndex + 1).toLowerCase() == 'svg') {
-			svgsrc = src.substr(0, src.length - urlparts[urlparts.length - 1].length - 1).replace('/thumb/', '/');
+		var $img = $(img), src = ($img.attr('data-src') || $img.attr('src')), urlparts = src.split('/'), lastIndex, svgsrc, $a, $o;
+		for (var i = urlparts.length - 2; i >= 0; i--) {
+			lastIndex = urlparts[i].lastIndexOf('.');
+			if (lastIndex > -1 && urlparts[i].substr(lastIndex + 1).toLowerCase() == 'svg') {
+				svgsrc = urlparts.slice(0, i + 1).join('/');
+				break;
+			}
+		}
+		if (svgsrc) {
 			$a = $img.closest('a');
 			$o = $('<object type="image/svg+xml"></object>').attr({'data': svgsrc, width: $img.attr('width')}).append(
 				$('<param/>').attr({'name': 'src', 'value': svgsrc}));
