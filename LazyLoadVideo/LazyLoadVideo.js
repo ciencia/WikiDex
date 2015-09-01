@@ -62,6 +62,7 @@ _muestraThumb = function() {
 // Evento al hacer clic en el overlay
 _insertVideo = function() {
 	var p = $(this).parent(), iframe;
+	p.empty();
 	iframe = $('<iframe>').attr({
 		'type': 'text/html',
 		width: p.css('width'),
@@ -70,7 +71,6 @@ _insertVideo = function() {
 		frameborder: '0',
 		allowfullscreen: ''
 	}).appendTo(p);
-	p.find('> img.videothumb').add(this).unbind().remove();
 };
 
 // Muy lazy load
