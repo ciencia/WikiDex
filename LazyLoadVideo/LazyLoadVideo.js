@@ -7,7 +7,7 @@
 *   the Free Software Foundation; either version 2 of the License, or
 *   (at your option) any later version
 */
-(function() {
+(function($) {
 
 var _title = (window.lazyloadvideotitle || 'Clic para activar el vídeo'),
 _thumbUrl = 'http://i1.ytimg.com/vi/{0}/hqdefault.jpg',
@@ -78,4 +78,4 @@ _insertVideo = function() {
 	window.setTimeout(_init, 2000);
 });
 
-})();
+})(jQuery);
