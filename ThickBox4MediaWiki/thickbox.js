@@ -1,10 +1,11 @@
 /* <pre>
- * Thickbox4MediaWiki v3.8 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
+ * Thickbox4MediaWiki v3.9 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
  * Copyright (c) 2010 - 2015 Jesús Martínez (User:Ciencia_Al_Poder), Original Thickbox Copyright (c) 2007 Cody Lindley
  * Licensed under the MIT License: http://www.opensource.org/licenses/mit-license.php
 */
-window.Thickbox = (function($) {
-	var _version = '3.8',
+window.Thickbox = (function($, mw) {
+	'use strict';
+	var _version = '3.9',
 	// Dimensiones mínimas
 	_minWidth = 210,
 	// Margen entre la imagen y el borde de ThickBox
@@ -27,12 +28,13 @@ window.Thickbox = (function($) {
 	_loaderPresent = false,
 	_loaderTm = null,
 	_logger = null,
-	_tbKind = {NONE: 0, IMAGE: 1, ELEMENT: 2},
-	_loaded = false,
 	// Funciones privadas
 	_init = function() {
 		// Se podría haber puesto un evento directamente en cada 'a.image', pero esto es mucho más rápido y eficiente (tarda solo el 20% en FF2) que recorrerse todo el DOM
-		$('#mw-content-text').unbind('click.thickbox').bind('click.thickbox', _triggerEvent).unbind('mouseover.thickbox_imgtip').bind('mouseover.thickbox_imgtip', _imgTipEvent);
+		$('#mw-content-text').off('click.thickbox mouseover.thickbox_imgtip').on({
+			'click.thickbox': _triggerEvent,
+			'mouseover.thickbox_imgtip': _imgTipEvent
+		});
 	},
 	_triggerEvent = function(e) {
 		// Si hay alguna tecla especial pulsada, salimos
@@ -51,10 +53,10 @@ window.Thickbox = (function($) {
 				target.blur();
 				_getCaption = _getCaptionWikia;
 				_galleryData = $(target).closest('div.wikia-gallery').find('> div.wikia-gallery-item > div.thumb > div.gallery-image-wrapper > a.lightbox');
-				if (_galleryData.length == 0) {
+				if (_galleryData.length === 0) {
 					_galleryData = $(target).closest('div.wikia-gallery').find('> div.wikia-gallery-row > div.wikia-gallery-item > div.thumb > div.gallery-image-wrapper > a.lightbox');
 				}
-				if (_galleryData.length == 0) {
+				if (_galleryData.length === 0) {
 					return true;
 				}
 				_galleryIndex = _galleryData.index(a);
@@ -129,7 +131,7 @@ window.Thickbox = (function($) {
 	_displayLoader = function() {
 		_loaderPresent = true;
 		_loaderTm = null;
-		$(document.body).append('<div id="TB_load"></div>');
+		$(document.body).append('<div id="TB_load">');
 	},
 	// Main functions
 	_preload = function() {
@@ -142,7 +144,6 @@ window.Thickbox = (function($) {
 	_showImage = function(elem) {
 		try {
 			var url, descUrl, descTitle, TB_secondLine = '', TB_descLink;
-			_tbLoaded = _tbKind.IMAGE;
 			_preload();
 			elem = $(elem);
 
@@ -158,7 +159,7 @@ window.Thickbox = (function($) {
 					descUrl = mw.util.wikiGetlink('File:' + descTitle);
 				}
 			}
-			TB_descLink = '<a id="TB_descLink" class="sprite details" href="' + descUrl + '" title="Ir a la página de descripción de la imagen"></a>';
+			TB_descLink = '<a id="TB_descLink" class="sprite details" title="Ir a la página de descripción de la imagen"></a>';
 			// Se trata de un gallery?
 			if (_galleryIndex != -1) {
 				TB_secondLine = '<div id="TB_secondLine">'+
@@ -173,9 +174,17 @@ window.Thickbox = (function($) {
 			$('#TB_caption').html( ( _getCaption(elem) || null ) );
 
 			$('#TB_Image').add('#TB_closeWindowButton').click(_remove);
-			$(document).bind('keyup.thickbox', _keyListener);
+			$(document).on('keyup.thickbox', _keyListener);
 			$('#TB_prev').add('#TB_next').click(_navigate);
-			$('#TB_ImageOff').bind('mouseover', function() {$('#TB_descLink').css('display','block');}).bind('mouseout', function() {$('#TB_descLink').css('display','none');});
+			$('#TB_descLink').attr('href', descUrl);
+			$('#TB_ImageOff').on({
+				mouseover: function() {
+					$('#TB_descLink').css('display','block');
+				},
+				mouseout: function() {
+					$('#TB_descLink').css('display','none');
+				}
+			});
 
 			if (_imgPreloader === null) {
 				_imgPreloader = new Image();
@@ -200,11 +209,10 @@ window.Thickbox = (function($) {
 				// Comprobamos que la URL sea del mismo documento
 				locbase = document.location.href.replace(baseurl, ''),
 				rel = document.getElementById(hash);
-			if ((locbase != '' && locbase.indexOf('#') != 0) || rel === null) {
+			if ((locbase !== '' && locbase.indexOf('#') !== 0) || rel === null) {
 				return false;
 			}
 
-			_tbLoaded = _tbKind.ELEMENT;
 			$('#TB_overlay').add('#TB_window').remove();
 			$(document.body).append('<div id="TB_overlay" class="transparent"></div><div id="TB_window"></div>');
 			$('#TB_overlay').click(_remove);
@@ -258,8 +266,8 @@ window.Thickbox = (function($) {
 			}
 
 			$('#TB_closeWindowButton').click(_remove);
-			$(document).bind('keyup.thickbox', _keyListener);
-		} catch(e) {
+			$(document).on('keyup.thickbox', _keyListener);
+		} catch (e) {
 			_log(e);
 		}
 	},
@@ -269,27 +277,27 @@ window.Thickbox = (function($) {
 		$('#TB_window').css('visibility','visible');
 	},
 	_remove = function() {
-		$(document).unbind('keyup.thickbox');
+		$(document).off('keyup.thickbox');
 		_galleryData = null;
 		_galleryIndex = -1;
 		if (_imgPreloader !== null) {
 			_imgPreloader.onload = null;
 			_imgPreloader.onerror = null;
 		}
-		$('#TB_ImageOff').add('#TB_Image').add('#TB_closeWindowButton').add('#TB_prev').add('#TB_next').unbind();
+		$('#TB_ImageOff').add('#TB_Image').add('#TB_closeWindowButton').add('#TB_prev').add('#TB_next').off();
 		$('#TB_window').add('#TB_Image').queue('fx',[]).stop();
-		$('#TB_window').fadeOut('fast',function(){$('#TB_window').add('#TB_overlay').unbind().remove();});
+		$('#TB_window').fadeOut('fast',function(){$('#TB_window').add('#TB_overlay').off().remove();});
 		_stopLoader();
 		$(document.body).removeClass('thickbox_loaded');
 		return false;
 	},
 	_keyListener = function(e) {
 		var keycode = e.which;
-		if(keycode == 27) { // close
+		if (keycode == 27) { // close
 			_remove();
-		} else if(keycode == 65) { // 'A' display previous image
+		} else if (keycode == 65) { // 'A' display previous image
 			$('#TB_prev').click();
-		} else if(keycode == 83) { // 'S' display next image
+		} else if (keycode == 83) { // 'S' display next image
 			$('#TB_next').click();
 		}
 	},
@@ -331,7 +339,7 @@ window.Thickbox = (function($) {
 		return elem.closest('.thumbinner').find('> .thumbcaption').clone().find('> div.magnify').remove().end().html();
 	},
 	_getCaptionEmpty = function(elem) {
-		return $('<div></div>').text((elem.attr('title')||'')).html();
+		return $('<div>').text((elem.attr('title')||'')).html();
 	},
 	_getCaptionMW = function(gitem) {
 		return gitem.closest('li.gallerybox').find('div.gallerytext').eq(0).html();
@@ -343,7 +351,6 @@ window.Thickbox = (function($) {
 		_stopLoader();
 	},
 	_imageLoaded = function() {
-
 		var navigation = (_galleryIndex != -1),
 			img = $('#TB_Image'),
 			wndH = $('#TB_window').height(),
@@ -353,7 +360,8 @@ window.Thickbox = (function($) {
 			x = pagesize[0] - _minMarginWidth * 2 - _imageMarginWidth * 2,
 			y = pagesize[1] - _minMarginHeight * 2 - wndH + img.height(),
 			imageWidth = _imgPreloader.width,
-			imageHeight = _imgPreloader.height;
+			imageHeight = _imgPreloader.height,
+			firstNav, imgOpt;
 		// Puede entrar por una o por las dos. De hecho, con esta comprobación basta, ya que si tiene que pasar por las dos da igual por qué lado se reduzca primero
 		if (imageWidth > x) {
 			imageHeight = imageHeight * (x / imageWidth);
@@ -365,8 +373,7 @@ window.Thickbox = (function($) {
 		}
 		// End Resizing
 
-		var firstNav = (img.attr('src') || '') === '';
-
+		firstNav = (img.attr('src') || '') === '';
 		// Dimensiones de la ventana Thickbox para posicionar
 		_width = imageWidth + _imageMarginWidth * 2; // 15px de espacio en cada lado
 		// La altura de la ventana la conocemos. Solo hay que reemplazar la imagen antigua y poner la nueva, esto es, sus dimensiones. El height se tiene que hacer diferente porque intervienen más elementos que en el ancho
@@ -376,7 +383,7 @@ window.Thickbox = (function($) {
 			alt: $('#TB_caption').text()
 		});
 
-		var imgOpt = {width: imageWidth, height: imageHeight, opacity: 1};
+		imgOpt = {width: imageWidth, height: imageHeight, opacity: 1};
 		// Miramos si se carga al abrir o después de navegar. Si viene de abrirse, sin animación
 		if (firstNav) {
 			img.css(imgOpt);
@@ -389,17 +396,18 @@ window.Thickbox = (function($) {
 	},
 	_updateNavigation = function() {
 		var seq = _galleryIndex, len = _galleryData.length;
-		$('#TB_prev').css('display', (seq == 0 ? 'none' : ''));
+		$('#TB_prev').css('display', (seq === 0 ? 'none' : ''));
 		$('#TB_next').css('display', (seq >= len-1 ? 'none' : ''));
 		$('#TB_imageCount').text('Imagen ' + (seq+1) + ' de ' + len);
 	},
 	_navigate = function() {
-		var seq = _galleryIndex + (this.id == 'TB_prev' ? -1 : 1), len = _galleryData.length, gitem = null;
+		var url, seq = _galleryIndex + (this.id == 'TB_prev' ? -1 : 1), len = _galleryData.length, gitem;
 		if (seq < 0 || seq > len - 1) {
 			return false;
 		}
 		_galleryIndex = seq;
-		gitem = _galleryData.eq(seq), url = _getUrlFromThumb(gitem.find('> img').eq(0).attr('src'));
+		gitem = _galleryData.eq(seq);
+		url = _getUrlFromThumb(gitem.find('> img').eq(0).attr('src'));
 		_updateNavigation();
 		if (_imgPreloader.src != url) {
 			$('#TB_window').stop();
@@ -414,30 +422,33 @@ window.Thickbox = (function($) {
 		return false;
 	},
 	_setParams = function(p) {
+		var val;
 		if (typeof p != 'object') {
 			return;
 		}
 		for (var n in p) {
-			var val = p[n];
-			switch(n) {
-				case 'minWidth':
-					_minWidth = val;
-					break;
-				case 'imageMarginWidth':
-					_imageMarginWidth = val;
-					break;
-				case 'minMarginWidth':
-					_minMarginWidth = val;
-					break;
-				case 'minMarginHeight':
-					_minMarginHeight = val;
-					break;
-				case 'loaderWait':
-					_loaderWait = (typeof val == 'number' && val);
-					break;
-				case 'logger':
-					_logger = (typeof val == 'function' && val);
-					break;
+			if (p.hasOwnProperty(n)) {
+				val = p[n];
+				switch(n) {
+					case 'minWidth':
+						_minWidth = val;
+						break;
+					case 'imageMarginWidth':
+						_imageMarginWidth = val;
+						break;
+					case 'minMarginWidth':
+						_minMarginWidth = val;
+						break;
+					case 'minMarginHeight':
+						_minMarginHeight = val;
+						break;
+					case 'loaderWait':
+						_loaderWait = (typeof val == 'number' && val);
+						break;
+					case 'logger':
+						_logger = (typeof val == 'function' && val);
+						break;
+				}
 			}
 		}
 	},
@@ -449,19 +460,22 @@ window.Thickbox = (function($) {
 	_imgTipEvent = function(e) {
 		var target = e.target, a, t;
 		if (e.ctrlKey || e.altKey || e.shiftKey) {
-			return _hideImgTip();
+			_hideImgTip();
+			return;
 		}
 		if (_isTag(target,'img')) { // Gallery o thumb
 			a = target.parentNode;
 			if (!_isTag(a,'a') || !_isClass(a,'image') || _isClass(a,'link-internal')) {
-				return _hideImgTip();
+				_hideImgTip();
+				return;
 			}
 			t = $(target);
 			// Mostramos solo si la imagen tiene un tamaño mínimo
 			if (t.width() < 40 || t.height() < 40) {
 				return;
 			}
-			return _showImgTip(t);
+			_showImgTip(t);
+			return;
 		}
 		_hideImgTip();
 	},
@@ -472,8 +486,8 @@ window.Thickbox = (function($) {
 		}
 	},
 	_createImgTip = function() {
-		_imgTip = $('<div id="TB_imagetip" title="Clic sobre la imagen para ampliar. Ctrl, Alt o Mayús. para acceder a la página de descripción de la imagen."></div>').appendTo(document.body);
-		_imgTip.bind('click',_imgTipClickEvent);
+		_imgTip = $('<div id="TB_imagetip" title="Clic sobre la imagen para ampliar. Ctrl, Alt o Mayús. para acceder a la página de descripción de la imagen.">').appendTo(document.body);
+		_imgTip.on('click',_imgTipClickEvent);
 	},
 	_showImgTip = function(target) {
 		if (!_imgTip) {
@@ -505,9 +519,9 @@ window.Thickbox = (function($) {
 		setParams: _setParams
 	};
 
-}(jQuery));
+}(jQuery, mw));
 
 if (mw.config.get('wgAction', '') != 'history' || !(mw.config.get('wgNamespaceNumber', 0) == -1 && mw.config.get('wgCanonicalSpecialPageName', '') == 'Recentchanges')) {
-	$(Thickbox.init);
+	$(window.Thickbox.init);
 }
 /* </pre> */
