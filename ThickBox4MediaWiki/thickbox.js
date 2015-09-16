@@ -150,14 +150,12 @@ window.Thickbox = (function($, mw) {
 			url = _getUrlFromThumb( elem.find('> img').eq(0).attr('src') );
 			descUrl = elem.attr('href');
 			// hack para oasis:
-			descTitle = elem.find('> img').attr('data-image-name');
-			if (typeof descTitle == 'string') {
+			descTitle = elem.find('> img').data('image-name');
+			if (!descTitle) {
+				descTitle = elem.data('image-name');
+			}
+			if (descTitle) {
 				descUrl = mw.util.wikiGetlink('File:' + descTitle);
-			} else {
-				descTitle = elem.attr('data-image-name');
-				if (typeof descTitle == 'string') {
-					descUrl = mw.util.wikiGetlink('File:' + descTitle);
-				}
 			}
 			TB_descLink = '<a id="TB_descLink" class="sprite details" title="Ir a la página de descripción de la imagen"></a>';
 			// Se trata de un gallery?
