@@ -151,7 +151,8 @@ window.Thickbox = (function($, mw) {
 			url = _getUrlFromThumb( $img.attr('src') );
 			descUrl = $a.attr('href');
 			if ($img.data('image-key')) {
-				descurl = mw.util.wikiGetlink(decodeURIComponent($img.data('image-key')));
+				// image-key es el nombre para la URL. No usar image-name porque está codificado doble (& --> &amp;amp;)
+				descUrl = mw.util.wikiGetlink(decodeURIComponent($img.data('image-key')));
 			}
 			TB_descLink = '<a id="TB_descLink" class="sprite details" title="Ir a la página de descripción de la imagen"></a>';
 			// Se trata de un gallery?
