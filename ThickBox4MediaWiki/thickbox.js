@@ -1,11 +1,11 @@
 /* <pre>
- * Thickbox4MediaWiki v3.9 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
+ * Thickbox4MediaWiki v3.10 - Based on Thickbox 3.1 By Cody Lindley (http://www.codylindley.com)
  * Copyright (c) 2010 - 2015 Jesús Martínez (User:Ciencia_Al_Poder), Original Thickbox Copyright (c) 2007 Cody Lindley
  * Licensed under the MIT License: http://www.opensource.org/licenses/mit-license.php
 */
 window.Thickbox = (function($, mw) {
 	'use strict';
-	var _version = '3.9',
+	var _version = '3.10',
 	// Dimensiones mínimas
 	_minWidth = 210,
 	// Margen entre la imagen y el borde de ThickBox
@@ -143,12 +143,16 @@ window.Thickbox = (function($, mw) {
 	},
 	_showImage = function(elem) {
 		try {
-			var url, descUrl, TB_secondLine = '', TB_descLink;
+			var url, $a, $img, descUrl, TB_secondLine = '', TB_descLink;
 			_preload();
-			elem = $(elem);
+			$a = $(elem);
+			$img = $a.find('> img').eq(0);
 
-			url = _getUrlFromThumb( elem.find('> img').eq(0).attr('src') );
-			descUrl = elem.attr('href');
+			url = _getUrlFromThumb( $img.attr('src') );
+			descUrl = $a.attr('href');
+			if ($img.data('image-key')) {
+				descurl = mw.util.wikiGetlink(decodeURIComponent($img.data('image-key')));
+			}
 			TB_descLink = '<a id="TB_descLink" class="sprite details" title="Ir a la página de descripción de la imagen"></a>';
 			// Se trata de un gallery?
 			if (_galleryIndex != -1) {
@@ -161,7 +165,7 @@ window.Thickbox = (function($, mw) {
 			if (_galleryIndex != -1) {
 				_updateNavigation();
 			}
-			$('#TB_caption').html( ( _getCaption(elem) || null ) );
+			$('#TB_caption').html( ( _getCaption($a) || null ) );
 
 			$('#TB_Image').add('#TB_closeWindowButton').click(_remove);
 			$(document).on('keyup.thickbox', _keyListener);
