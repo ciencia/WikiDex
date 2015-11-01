@@ -50,7 +50,8 @@
 		'*': false,
 		user: false,
 		autoconfirmed: false,
-		emailconfirmed: false
+		emailconfirmed: false,
+		poweruser: false
 	},
 	_avatarWidth = 100, // Initial width
 	_avatarHeight = 100, // Max height
