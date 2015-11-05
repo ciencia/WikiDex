@@ -14,7 +14,7 @@ if (!mw.config.get('wgValidators', null)) {
 		/^\d+$/, // Solo números
 		/\.{2,}/, // Varios puntos seguidos
 		/\-{2,}/, // Varios guiones
-		/[A-Z]{5,}/, // Mayúsculas excesivas
+		/[A-Z]{8,}/, // Mayúsculas excesivas
 		/-\d+-/, // Sufijos raros de venir de otras webs
 		/image[ns]? ?\(?\d+\)?/i,
 		/^img/i,
@@ -38,9 +38,7 @@ if (!mw.config.get('wgValidators', null)) {
 		/(jpg|jpeg|png|gif|bmp)$/i // Dobles extensiones
 	],
 	_whitelists = [ // Busqueda en el nombre del archivo, sin extensión
-		/superentrenamiento/i, // /[A-Za-z0-9]{16,}/
-		/PMSXY/, // /[A-Z]{5,}/
-		/PMSORAS/
+		/superentrenamiento/i // /[A-Za-z0-9]{16,}/
 	],
 	_extractName = function(title) {
 		var dot = title.lastIndexOf('.');
