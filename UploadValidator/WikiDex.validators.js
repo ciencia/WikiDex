@@ -39,8 +39,8 @@ if (!mw.config.get('wgValidators', null)) {
 	],
 	_whitelists = [ // Busqueda en el nombre del archivo, sin extensión
 		/superentrenamiento/i, // /[A-Za-z0-9]{16,}/
-		/^PMSXY\d+/, // /[A-Z]{5,}/
-		/^PMSORAS\d+/
+		/PMSXY/, // /[A-Z]{5,}/
+		/PMSORAS/
 	],
 	_extractName = function(title) {
 		var dot = title.lastIndexOf('.');
