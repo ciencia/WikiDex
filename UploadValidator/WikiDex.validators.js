@@ -38,7 +38,8 @@ if (!mw.config.get('wgValidators', null)) {
 		/(jpg|jpeg|png|gif|bmp)$/i // Dobles extensiones
 	],
 	_whitelists = [ // Busqueda en el nombre del archivo, sin extensión
-		/superentrenamiento/i // /[A-Za-z0-9]{16,}/
+		/superentrenamiento/i, // /[A-Za-z0-9]{16,}/
+		/megaevolucion/i // megaevolucionando /[A-Za-z0-9]{16,}/
 	],
 	_extractName = function(title) {
 		var dot = title.lastIndexOf('.');
