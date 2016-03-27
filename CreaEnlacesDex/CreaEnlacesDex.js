@@ -153,9 +153,9 @@ window.CreaEnlacesDex = (function($) {
 		var res = text.substr(0, 1).toUpperCase() + text.substr(1).toLowerCase();
 		res = res.replace(new RegExp('([ \-])(\\w+)', 'g'), function(match, p1, p2, offset) {
 			// Omite palabra después de prefijo de 1 letra (U-turn) o la palabra "or" (Trick-or-Treat)
-			if (offset == 1 || p2 == 'or') {
-				return match;
-			}
+			//if (offset == 1 || p2 == 'or') {
+			//	return match;
+			//}
 			return p1 + p2.substr(0, 1).toUpperCase() + p2.substr(1);
 		});
 		return res;
@@ -209,7 +209,7 @@ window.CreaEnlacesDex = (function($) {
 	genMov = function() {
 		var i = (_vars.ingles || 0),
 			g = (_vars.generacion || 999);
-		i && g <= 6 && link(T_UBP+toCamel(i)+'_(move)','Bulbapedia [en]','Bulbapedia'+T_EN);
+		i && g <= 6 && link(T_UBP+'Special:Search/'+i+'_(move)','Bulbapedia [en]','Bulbapedia'+T_EN);
 		i && g <= 6 && link(T_UVE+'moves/'+i.toLowerCase(),'Veekun [en]','Veekun'+T_EN);
 		i && g <= 3 && link(T_ULP+'rs/attacks/'+i,T_L+' 3Gen [en]',T_LP+'3ª'+T_G+T_EN);
 		i && g <= 4 && link(T_ULP+'dp/attacks/'+i,T_L+' 4Gen [en]',T_LP+'4ª'+T_G+T_EN);
