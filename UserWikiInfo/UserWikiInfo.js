@@ -1,6 +1,6 @@
 // <pre>
 /*
- * UserWikiInfo v4.0: Una colección de enlaces útiles relacionados con el usuario que aparece en contribuciones, página de usuario y discusión, con recuento de ediciones y avatar, para Monobook
+ * UserWikiInfo v4.1: Una colección de enlaces útiles relacionados con el usuario que aparece en contribuciones, página de usuario y discusión, con recuento de ediciones y avatar, para Monobook
  *
  * Copyright (C) 2010-2016  Jesús Martínez Novo ([[User:Ciencia Al Poder]])
  *
@@ -283,19 +283,21 @@
 			type: 'POST',
 			url: '/wikia.php?controller=UserProfilePage&format=json&method=saveUserData',
 			dataType: 'json',
-			data: 'userId=' + _userid + '&data=' + $.toJSON( _formdata ),
-			success: _submitComplete,
-			error: function(xhr, t, e) {
-				if (t === null && e !== undefined) {
-					t = e.toString() + e.stack;
-				}
-				_changeAvatar(t);
+			data: {
+				userId: _userid,
+				data: $.toJSON( _formdata ),
+				token: mw.user.tokens.get('editToken')
 			}
+		}).done(_submitComplete).fail(function(xhr, t, e) {
+			if (t === null && e !== undefined) {
+				t = e.toString() + e.stack;
+			}
+			_changeAvatar(t);
 		});
 	},
 	_submitComplete = function(data) {
 		if (data.status === 'error') {
-			_changeAvatar(data.errorMsg);
+			_changeAvatar(data.errormsg);
 		} else {
 			var img = $('#UserWikiInfo').find('.useravatar').find('img');
 			var src = img.attr('src');
