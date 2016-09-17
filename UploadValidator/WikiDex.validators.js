@@ -148,7 +148,7 @@ mw.config.get('wgValidators').push({
 
 (function(wgValidators) {
 	'use strict';
-	var _re_ep = /^(EP|P|EE|EH|OP|OPJ|EDJ|PK|VI|PO|SME|PL|TA)[ .:\-]*(\d+)[ .:\-]*/i,
+	var _re_ep = /^(EP|P|EE|EH|OP|OPJ|EDJ|PK|VI|PO|SME|PL|TA|GEN)[ .:\-]*(\d+)[ .:\-]*/i,
 		_epLicense = 'ScreenshotTV';
 
 	wgValidators.push({
