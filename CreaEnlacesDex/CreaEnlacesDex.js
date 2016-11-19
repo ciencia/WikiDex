@@ -39,7 +39,7 @@ window.CreaEnlacesDex = (function($) {
 	T_SM = 'Smogon',
 	SHTML = '.shtml',
 	PHP = '.php',
-	_generaciones = ['Primera', 'Segunda', 'Tercera', 'Cuarta', 'Quinta', 'Sexta'],
+	_generaciones = ['Primera', 'Segunda', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima'],
 	_storeTag = 'DexItem',
 	_vars = {
 		// Tipo: Pokémon o movimiento
@@ -204,12 +204,13 @@ window.CreaEnlacesDex = (function($) {
 		n && n <= 493 && link(T_USP+'-dp/'+zPadLeft(sn,3)+SHTML,T_S+' 4Gen [en]',T_S+': 4ª'+T_G+T_EN);
 		n && n <= 649 && link(T_USP+'-bw/'+zPadLeft(sn,3)+SHTML,T_S+' 5Gen [en]',T_S+': 5ª'+T_G+T_EN);
 		n && n <= 721 && link(T_USP+'-xy/'+zPadLeft(sn,3)+SHTML,T_S+' 6Gen [en]',T_S+': 6ª'+T_G+T_EN);
+		n && n <= 802 && link(T_USP+'-sm/'+zPadLeft(sn,3)+SHTML,T_S+' 7Gen [en]',T_S+': 7ª'+T_G+T_EN);
 		n && n <= 721 && link(T_USM+'pokemon/'+m.toLowerCase().replace(new RegExp('\\s', 'g'),'_').replace(new RegExp('[.\']', 'g'), ''),T_SM+' [en]',T_SM+': 6ª'+T_G+T_EN);
 	},
 	genMov = function() {
 		var i = (_vars.ingles || 0),
 			g = (_vars.generacion || 999);
-		i && g <= 6 && link(T_UBP+'Special:Search/'+i+'_(move)','Bulbapedia [en]','Bulbapedia'+T_EN);
+		i && g <= 7 && link(T_UBP+'Special:Search/'+i+'_(move)','Bulbapedia [en]','Bulbapedia'+T_EN);
 		i && g <= 6 && link(T_UVE+'moves/'+i.toLowerCase(),'Veekun [en]','Veekun'+T_EN);
 		i && g <= 3 && link(T_ULP+'rs/attacks/'+i,T_L+' 3Gen [en]',T_LP+'3ª'+T_G+T_EN);
 		i && g <= 4 && link(T_ULP+'dp/attacks/'+i,T_L+' 4Gen [en]',T_LP+'4ª'+T_G+T_EN);
@@ -217,6 +218,7 @@ window.CreaEnlacesDex = (function($) {
 		i && g <= 4 && link(T_USA+'-dp/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 4Gen [en]',T_S+': 4ª'+T_G+T_EN);
 		i && g <= 5 && link(T_USA+'-bw/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 5Gen [en]',T_S+': 5ª'+T_G+T_EN);
 		i && g <= 6 && link(T_USA+'-xy/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 6Gen [en]',T_S+': 6ª'+T_G+T_EN);
+		i && g <= 7 && link(T_USA+'-sm/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'')+SHTML,T_S+' 7Gen [en]',T_S+': 7ª'+T_G+T_EN);
 		i && g <= 6 && link(T_USM+'moves/'+i.toLowerCase().replace(new RegExp('\\s', 'g'),'_'),T_SM+' 6Gen [en]',T_SM+': 6ª'+T_G+T_EN);
 	},
 	genBaya = function() {
