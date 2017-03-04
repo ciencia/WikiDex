@@ -18,7 +18,7 @@
 		if (url.query.useskin) {
 			_skin = (url.query.propagateskin || url.query.useskin);
 		}
-		if (!_skin) {
+		if (_skin) {
 			$(document.body).bind('click.skinpropagation', _clicEvent);
 			$('form').bind('submit.skinpropagation', _submitEvent);
 		}
