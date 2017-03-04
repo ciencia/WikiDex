@@ -1,39 +1,41 @@
 /**
 * SkinPropagation: Propaga el &useskin= de la URL (siempre que sea posible) por los enlaces y formularios
-* Copyright (C) 2010  Jesús Martínez Novo ([[User:Ciencia Al Poder]])
+* Copyright (C) 2010-2017  Jesús Martínez Novo ([[User:Ciencia Al Poder]])
 * 
 * This program is free software; you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
 *   the Free Software Foundation; either version 2 of the License, or
 *   (at your option) any later version
 */
-window.SkinPropagation = {
-	skin: '',
-	init: function() {
+(function($, mw) {
+	'use strict';
+	var _skin = '',
+	_init = function() {
+		var url;
 		if (window.location.href.indexOf('useskin=') == -1) return;
-		var url = SkinPropagation.parseURL(window.location.href);
+		url = _parseURL(window.location.href);
+		// Si existe propagateskin, se propagará este en los siguientes enlaces en lugar del useskin (p.ej. enlaces para 
 		if (url.query.useskin) {
-			SkinPropagation.skin = (url.query.propagateskin || url.query.useskin);
+			_skin = (url.query.propagateskin || url.query.useskin);
 		}
-		if (SkinPropagation.skin != '') {
-			$(document.body).bind('click.skinpropagation', SkinPropagation.clicEvent);
-			$('form').bind('submit.skinpropagation', SkinPropagation.submitEvent);
+		if (!_skin) {
+			$(document.body).bind('click.skinpropagation', _clicEvent);
+			$('form').bind('submit.skinpropagation', _submitEvent);
 		}
 	},
-	parseURL: function(url) {
-		var ret = {base:'',qs:'',query:{},hash:''};
-		var loc = url.indexOf('#');
+	_parseURL = function(url) {
+		var ret = { base:'', qs:'', query: {}, hash: '' }, loc = url.indexOf('#'), paras, i, p;
 		if (loc != -1) {
-			ret.hash = url.substr(loc+1);
-			url = url.substr(0,loc);
+			ret.hash = url.substr(loc + 1);
+			url = url.substr(0, loc);
 		}
 		loc = url.indexOf('?');
 		if (loc != -1) {
-			ret.qs = url.substr(loc+1);
-			url = url.substr(0,loc);
-			var paras = ret.qs.split('&');
-			for (var i = 0; i < paras.length; i++) {
-				var p = paras[i].split('=');
+			ret.qs = url.substr(loc + 1);
+			url = url.substr(0, loc);
+			paras = ret.qs.split('&');
+			for (i = 0; i < paras.length; i++) {
+				p = paras[i].split('=');
 				if (p.length == 2) {
 					ret.query[p[0]] = p[1];
 				}
@@ -42,60 +44,59 @@ window.SkinPropagation = {
 		ret.base = url;
 		return ret;
 	},
-	getURL: function(url) {
-		var nurl = url.base + '?';
-		for (var p in url.query) {
-			nurl += p + '=' + url.query[p] + '&';
+	_getURL = function(url) {
+		var nurl, p;
+		nurl = url.base + '?';
+		for (p in url.query) {
+			if (url.query.hasOwnProperty(p) && (url.query[p] || url.query[p] === '')) {
+				nurl += p + '=' + url.query[p] + '&';
+			}
 		}
-		nurl = nurl.substr(0,nurl.length-1);
-		if (url.hash != '') {
-			nurl += '#'+ url.hash;
+		nurl = nurl.substr(0, nurl.length - 1);
+		if (url.hash) {
+			nurl += '#' + url.hash;
 		}
 		return nurl;
 	},
-	clicEvent: function(e) {
+	_clicEvent = function(e) {
+		var url, thisloc;
 		if (e.target.tagName.toLowerCase() != 'a') return;
-		if (e.target.href.indexOf(window.wgServer) != 0) return;
-		var url = SkinPropagation.parseURL(e.target.href);
-		var thisloc = SkinPropagation.parseURL(window.location.href);
-		if (url.base == thisloc.base && url.qs == thisloc.qs && url.hash != '') {
+		if (e.target.href.indexOf(mw.config.get('wgServer')) !== 0) return;
+		url = _parseURL(e.target.href);
+		thisloc = _parseURL(window.location.href);
+		// Si es enlace a sección, no hacer nada
+		if (url.base == thisloc.base && url.qs == thisloc.qs && url.hash) {
 			return;
 		}
-		if (url.query.useskin && url.query.useskin != SkinPropagation.skin) {
-			url.query.propagateskin = SkinPropagation.skin;
+		if (url.query.useskin && url.query.useskin != _skin) {
+			url.query.propagateskin = _skin;
 		} else {
-			url.query.useskin = SkinPropagation.skin;
+			url.query.useskin = _skin;
 		}
-		e.target.href = SkinPropagation.getURL(url);
+		e.target.href = _getURL(url);
 	},
-	submitEvent: function(e) {
-		if (this.action.indexOf(window.wgServer) != 0) return;
-		if (this.method == 'post') {
-			var url = SkinPropagation.parseURL(this.action);
-			url.query.useskin = SkinPropagation.skin;
-			this.action = SkinPropagation.getURL(url);
+	_submitEvent = function(e) {
+		var url;
+		if (this.action.indexOf(mw.config.get('wgServer')) !== 0) return;
+		if (this.method.toLowerCase() == 'post') {
+			url = _parseURL(this.action);
+			url.query.useskin = _skin;
+			this.action = _getURL(url);
 		} else {
-			$(this).append('<input type="hidden" name="useskin" value="'+SkinPropagation.skin+'"/>');
+			$('<input type="hidden" name="useskin">').val(_skin).appendTo(this);
 		}
 	},
-	stop: function() {
-		$(document.body).unbind('click.skinpropagation');
-		$('form').unbind('submit.skinpropagation');
-	}
-};
+	_addUseSkin = function(url, skin) {
+		var nurl = _parseURL(url);
+		nurl.query.useskin = skin;
+		nurl.query.propagateskin = false;
+		return _getURL(nurl);
+	};
 
-$(SkinPropagation.init);
+	window.SkinPropagation = {
+		addUseSkin: _addUseSkin
+	};
 
-function agregarEnlaceSkin() {
-	if (!window.SkinPropagation) return;
-	var url = SkinPropagation.parseURL(window.location.href);
-	url.query.useskin = 'monobook';
-	var surl = SkinPropagation.getURL(url);
-	$('#WikiaFooter').children('div.toolbar').eq(0).children('ul').eq(0).append('<li><a href="'+surl+'"><img width="15" height="15" class="monobook-icon" src="'+stylepath+'/common/blank.gif"/></a> <a href="'+surl+'" id="ca-changeskin" title="Ver WikiDex con la piel Monobook">Cambiar la apariencia a Monobook</a></li>');
-	
-	$('#ca-changeskin').click(function(){
-		alert('La apariencia cambiará temporalmente a Monobook. Para ver el estilo por defecto deberás quitar el "useskin=monobook" de la dirección de la página que sale en el navegador');
-	});
-}
+	$(_init);
 
-$(agregarEnlaceSkin);
+})(jQuery, mw);
