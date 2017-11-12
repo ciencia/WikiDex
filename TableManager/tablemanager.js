@@ -1,37 +1,26 @@
-//<pre>
 /************************************/
 /* TableManager: Permite mostrar/ocultar y mover las columnas de una tabla a voluntad, y ordenar las filas por una o varias columnas
- * Copyright (C) 2008  Jesús Martínez Novo ([[User:Ciencia Al Poder]])
- * This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version
- *
- * @param {HTMLTable} table: Tabla sobre la que actuar
- * @param {object} cfg: (opcional) Configuración adicional:
- *   unsortable:{bool} Indica si debe deshabilitar la ordenación. En ese caso no aparecerán controles de ordenación. El mismo efecto se consigue con class="unsortable" en la tabla
- *   emptysort:{number} Indica la posición de las celdas vacías: 1: siempre arriba (independientemente de la ordenación), -1:siempre abajo (ídem), 0:lo determinará la función de ordenación
- *   sortCfg:{obj} Funciones de ordenación. El nombre de cada objeto se usará como CSSClass en los botones de ordenación (tm-sort-{nombre} (y sufijo -asc o -dsc según estado actual)). También sirve para determinar desde el inicio la función de ordenación a comprobar, oniendo como CSSClass en la columna sort{nombre}
- *    {
- *     testFn: {function} función que determina si debe ser ésta la ordenación. Parámetros: 1:celda 2:texto de la celda. Si es null se asume que debe usarse éste parámetro de ordenación y no comprueba el resto de opciones. Útil para la última función.
- *     sortFn: {function} función de ordenación (compatible con funciones de SortableTables de MediaWiki). Parámetros: a,b = Array[1:fila, 2:texto de la celda, 3:índice actual de fila, en negativo si se ordena al revés, 4:celda].
- *     priority: {number} prioridad para determinar qué reglas se comprobarán antes
- *     title: {string} Título del tipo de datos de ordenación, para el texto de los botones.
- *    }
+ * Copyright (C) 2017 Jesús Martínez Novo ([[User:Ciencia Al Poder]])
+ * @license: MIT
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-(function ( $ ) {
+(function ( $, mw, global ) {
 	var _k_status_idle = 0,
 	_k_status_move = 1,
 	_k_status_sort = 2,
+	_k_prevent_text_selection = '-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;',
 	_trackStyles = {},
 	_mainStyle = null,
 	_stylesNeedRefresh = false,
+	_globalID = 0,
+	_tmObject = null,
 	_texts = {
 		move: 'Mover y organizar columnas',
-		endmove: 'Finalizar',
 		//order: 'Ordenar filas',
 		hiddencols: 'Columnas ocultas:',
-		hiddencolsnumber: 'Hay $1 columnas ocultas',
+		hiddencolsnumber: '$1 columna(s) oculta(s)',
 		movetip: 'Arrastra las columnas para moverlas de posición, o muévelas fuera de la tabla para ocultarlas. Mueve los encabezados de las columnas que están fuera hacia dentro de la tabla para volver a mostrarlas.'
 	},
 	_defaultsortcfg = {
@@ -149,14 +138,27 @@
 			cl
 		];
 		return rectInfo;
+	},
+	// Sets an unique ID to an element, if it doesn't have one already
+	_setUniqueID = function( $element ) {
+		var id;
+		if ( $element.attr( 'id' ) ) return;
+		do {
+			id = 'tm-globalid-' + _globalID.toString();
+			_globalID++;
+		} while ( document.getElementById( id ) );
+		$element.attr( 'id', id );
+	},
+	_fixThisOnFunction = function( that, fn ) {
+		return function( event ) {
+			return fn.apply( that, arguments );
+		};
 	};
 
-	$.widget( 'ciencia.tablemanager', {
-		version: 2,
+	_tmObject = {
+		version: 2.0,
 		// Default options
 		options: {
-			show: true,
-			hide: true,
 			// Indica si debe deshabilitar la ordenación. En ese caso no aparecerán controles de ordenación. El mismo efecto se consigue con class="unsortable" en la tabla
 			unsortable: false,
 			// Indica la posición de las celdas vacías: 1: siempre arriba (independientemente de la ordenación), -1:siempre abajo (ídem), 0:lo determinará la función de ordenación
@@ -167,216 +169,243 @@
 			// - priority: {number} prioridad para determinar qué reglas se comprobarán antes
 			// - title: {string} Título del tipo de datos de ordenación
 			sortcfg: $.extend( {}, _defaultsortcfg ),
-			// CSS selectors (restricted to the first row), array of column indexes, or a number to auto-hide columns if it detects the table is too wide for current screen
-			// - Array of CSS selectors: will match against children of first row
-			// - Array of column indexes (base 0)
-			// - Number: If positive, will hide first columns, last columns otherwise
+			// Function returning an array of column indexes to hide. Inside the function, "this" will be the table element
 			autohidecol: null
 		},
 		_status: 0,
 		_mgrctrl: null,
+		_movebtn: null,
 		_movetipctrl: null,
+		_hiddencolumnstip: null,
 		_cachedColumnsRect: null,
 		_moveindicator: null,
 		_columnvisibility: [],
 		_create: function() {
 			var i;
-			if ( !this.element.is( 'table' ) ) return;
-			this.element.uniqueId();
+			_setUniqueID( this.$element );
+			this._movebtn = new OO.ui.ToggleButtonWidget( {
+				label: _texts.move,
+				flags: [ 'progressive' ]
+			} );
 			this._mgrctrl = $( '<div class="tablemanager-control"></div>' ).append( [
-				$( '<div class="tm-a-move btn"></div>' ).text( _texts.move ),
-				//$( '<div class="tm-a-order btn"></div>' ).text( _texts.order ),
-				$( '<div class="tm-extracolumns-tip"></div>' ),
+				this._movebtn.$element,
 				$( '<div class="tm-extracolumns"><div class="tm-hiddencols"></div></div>' ).prepend(
 					$('<div>').text( _texts.hiddencols )
 				).css( 'display', 'none' )
-			] ).uniqueId().insertBefore( this.element );
-			for ( i = this.element[0].rows[0].cells.length - 1; i >= 0; i-- ) {
+			] ).insertBefore( this.$element );
+			_setUniqueID( this._mgrctrl );
+			for ( i = this.$element[0].rows[0].cells.length - 1; i >= 0; i-- ) {
 				this._columnvisibility[i] = true;
 			}
-			this._on( this._mgrctrl, {
-				'click .tm-a-move:eq(0)': function( event ) {
-					if ( this._status === _k_status_move ) {
-						this._trigger( 'disablecolumnmove' );
-						this.disablecolumnmove();
-					} else {
-						this._trigger( 'enablecolumnmove' );
-						this.enablecolumnmove();
-					}
-					event.preventDefault();
-				},
-				'click .tm-a-order:eq(0)': function( event ) {
-					this._trigger( 'enableroworder' );
-					//this.enableroworder();
-					event.preventDefault();
-				},
-			} );
+			this._movebtn.on( 'click', _fixThisOnFunction( this, function( event ) {
+				if ( this._status === _k_status_move ) {
+					this.disablecolumnmove();
+				} else {
+					this.enablecolumnmove();
+				}
+			} ) );
 			this.applyautohide();
+			this.$element.addClass( 'tablemanager-table' );
 		},
 		enablecolumnmove: function() {
 			if ( this._status !== _k_status_idle ) return;
 			this._status = _k_status_move;
 			if ( ! this._movetipctrl ) {
-				this._movetipctrl = $( '<div>' ).addClass( 'tablemanager-tip' ).text( _texts.movetip ).insertBefore( this._mgrctrl );
+				this._movetipctrl = new OO.ui.PopupWidget( {
+					$content: $( '<p>' ).text( _texts.movetip ),
+					$floatableContainer: this._movebtn.$element,
+					padded: true,
+					align: 'forwards',
+					position: 'above',
+					width: Math.min( 600, $( document.body ).width() * 0.8 ),
+				} );
+				this._movetipctrl.$element.insertBefore( this._mgrctrl );
 			}
-			this._mgrctrl.find( '>.tm-extracolumns-tip' ).hide().end().find( '>.tm-extracolumns' ).show();
-			this._show( this._movetipctrl, this.options.show );
-			this._movetipctrl.position( {
-				my: 'center bottom-10',
-				at: 'center top',
-				of: this._mgrctrl
-			} );
-			this._on( this.element, {
-				'mousedown': function( event ) {
-					var td, rules, selector, visibleCount, i;
-					visibleCount = 0;
-					for ( i = 0; i < this._columnvisibility.length; i++ ) {
-						if ( this._columnvisibility[i] ) {
-							visibleCount++;
-							if ( visibleCount > 1 ) break;
-						}
-					}
-					// Do not allow hiding the last visible column
-					if ( visibleCount <= 1 ) return;
+			if ( this._hiddencolumnstip ) {
+				this._hiddencolumnstip.hide();
+			}
+			this._mgrctrl.find( '>.tm-extracolumns' ).show();
+			this._movetipctrl.toggle( true );
+			this.$element.on( {
+				'mousedown.tablemanager': _fixThisOnFunction( this, function( event ) {
 					if ( event.which === 1 ) {
-						td = $( event.target ).closest( 'td,th' ).get(0);
-						if ( !td ) return false;
-						rules = {};
-						selector = '& tr>td:nth-child($),& tr>th:nth-child($)'.replace( /\$/g, td.cellIndex + 1);
-						rules[selector] = 'opacity: 0.3;';
-						_addStyle( this.element[0].id, 'colmove', rules );
-						this._cachedColumnsRect = _calculateColumnsRect( this.element );
-						this._moveindicator.css( {
-							top: this._cachedColumnsRect[0][2],
-							height: this._cachedColumnsRect[0][4]
-						} );
-						this._setupMoveEvents( td.cellIndex );
-						_applyStyles( this.document[0] );
+						this._startdrageventfromtable( event.target );
 						return false;
 					}
-				},
-				'click': function( event ) {
+				} ),
+				'touchstart.tablemanager': _fixThisOnFunction( this, function( event ) {
+					this._startdrageventfromtable( event.target );
+					return false;
+				} ),
+				'click.tablemanager': function( event ) {
 					return false;
 				}
 			} );
-			this._on( this._mgrctrl.find( '.tm-hiddencols:eq(0)' ), {
-				'mousedown': function( event ) {
-					var $div, $hidden, cellIndex = -1, i, visibleCount = 0, rules, selector;
+			this._mgrctrl.find( '.tm-hiddencols:eq(0)' ).on( {
+				'mousedown.tablemanager': _fixThisOnFunction( this, function( event ) {
 					if ( event.which === 1 ) {
-						$div = $( event.target ).closest( '.tm-hiddencols>div' );
-						if ( !$div.length ) return false;
-						$hidden = $div.parent().find( '>div' );
-						for ( i = 0; i < $hidden.length; i++ ) {
-							if ( $hidden.eq( i ).is( $div ) ) {
-								cellIndex = i;
-								break;
-							}
-						}
-						if ( cellIndex === -1 ) return false;
-						rules = {};
-						selector = '#' + this._mgrctrl.attr( 'id' ) + ' .tm-hiddencols>div:nth-child($)'.replace( /\$/g, cellIndex + 1);
-						rules[selector] = 'opacity: 0.3;';
-						_addStyle( this.element[0].id, 'colmove', rules );
-						this._cachedColumnsRect = _calculateColumnsRect( this.element );
-						this._moveindicator.css( {
-							top: this._cachedColumnsRect[0][2],
-							height: this._cachedColumnsRect[0][4]
-						} );
-						// We need the cell index from the array of columns
-						for ( i = 0; i < this._columnvisibility.length; i++ ) {
-							if ( !this._columnvisibility[i] ) {
-								if ( cellIndex === visibleCount ) {
-									this._setupMoveEvents( i );
-								}
-								visibleCount++;
-							}
-						}
-						_applyStyles( this.document[0] );
+						this._startdrageventfromhidden( event.target );
 						return false;
 					}
-				},
-				'click': function( event ) {
+				} ),
+				'touchstart.tablemanager': _fixThisOnFunction( this, function( event ) {
+					this._startdrageventfromhidden( event.target );
+					return false;
+				} ),
+				'click.tablemanager': function( event ) {
 					return false;
 				}
 			} );
-			this._moveindicator = $('<div class="tablemanager-moveindicator"></div>').appendTo( this.document[0].body );
-			this._mgrctrl.find( '.tm-a-move:eq(0)' ).text( _texts.endmove );
-			this.element.addClass( 'tm-state-move' );
+			this._moveindicator = $('<div class="tablemanager-moveindicator"></div>').appendTo( this.$document[0].body );
+			this.$element.addClass( 'tm-state-move' );
+			_addStyle( this.$element[0].id, 'enablecolumnmove', { '& a': 'pointer-events:none;' } );
+			_applyStyles();
 		},
-		disablecolumnmove: function() {
-			var i, numhidden = 0;
-			if ( this._status !== _k_status_move ) return;
-			if ( this._movetipctrl ) {
-				this._hide( this._movetipctrl, this.options.hide );
-				this._mgrctrl.find( '>.tm-extracolumns' ).hide();
+		_startdrageventfromtable: function( target ) {
+			var td, rules, selector, visibleCount, i;
+			visibleCount = 0;
+			for ( i = 0; i < this._columnvisibility.length; i++ ) {
+				if ( this._columnvisibility[i] ) {
+					visibleCount++;
+					if ( visibleCount > 1 ) break;
+				}
 			}
+			// Do not allow hiding the last visible column
+			if ( visibleCount <= 1 ) return;
+			td = $( target ).closest( 'td,th' ).get(0);
+			if ( !td ) return;
+			rules = {};
+			selector = '& tr>td:nth-child($),& tr>th:nth-child($)'.replace( /\$/g, td.cellIndex + 1);
+			rules[selector] = 'opacity: 0.3;';
+			rules.body = _k_prevent_text_selection;
+			_addStyle( this.$element[0].id, 'colmove', rules );
+			this._cachedColumnsRect = _calculateColumnsRect( this.$element );
+			this._moveindicator.css( {
+				top: this._cachedColumnsRect[0][2],
+				height: this._cachedColumnsRect[0][4]
+			} );
+			this._setupMoveEvents( td.cellIndex );
+			_applyStyles( this.$document[0] );
+		},
+		_startdrageventfromhidden: function( target ) {
+			var $div, $hidden, cellIndex = -1, i, visibleCount = 0, rules, selector;
+			$div = $( target ).closest( '.tm-hiddencols>div' );
+			if ( !$div.length ) return;
+			$hidden = $div.parent().find( '>div' );
+			for ( i = 0; i < $hidden.length; i++ ) {
+				if ( $hidden.eq( i ).is( $div ) ) {
+					cellIndex = i;
+					break;
+				}
+			}
+			if ( cellIndex === -1 ) return;
+			rules = {};
+			selector = '#' + this._mgrctrl.attr( 'id' ) + ' .tm-hiddencols>div:nth-child($)'.replace( /\$/g, cellIndex + 1);
+			rules[selector] = 'opacity: 0.3;';
+			rules.body = _k_prevent_text_selection;
+			_addStyle( this.$element[0].id, 'colmove', rules );
+			this._cachedColumnsRect = _calculateColumnsRect( this.$element );
+			this._moveindicator.css( {
+				top: this._cachedColumnsRect[0][2],
+				height: this._cachedColumnsRect[0][4]
+			} );
+			// We need the cell index from the array of columns
 			for ( i = 0; i < this._columnvisibility.length; i++ ) {
 				if ( !this._columnvisibility[i] ) {
-					numhidden++;
+					if ( cellIndex === visibleCount ) {
+						this._setupMoveEvents( i );
+					}
+					visibleCount++;
 				}
 			}
-			if ( numhidden > 0 ) {
-				this._mgrctrl.find( '>.tm-extracolumns-tip' ).text( _texts.hiddencolsnumber.replace( '$1', numhidden ) ).show();
+			_applyStyles( this.$document[0] );
+		},
+		disablecolumnmove: function() {
+			if ( this._status !== _k_status_move ) return;
+			if ( this._movetipctrl ) {
+				this._movetipctrl.toggle( false );
+				this._mgrctrl.find( '>.tm-extracolumns' ).hide();
 			}
-			this._off( this.element, 'mousedown click' );
-			this._off( this._mgrctrl.find( '.tm-hiddencols:eq(0)' ), 'mousedown click' );
-			this._mgrctrl.find( '.tm-a-move:eq(0)' ).text( _texts.move );
+			this.$element.off( 'mousedown.tablemanager click.tablemanager' );
+			this._mgrctrl.find( '.tm-hiddencols:eq(0)' ).off( 'mousedown.tablemanager click.tablemanager' );
+			this._movebtn.setLabel( _texts.move );
+			this._rebuildHiddenTip();
+			this.$element.removeClass( 'tm-state-move' );
+			_removeStyle( this.$element[0].id, 'enablecolumnmove' );
+			_applyStyles();
 			this._status = _k_status_idle;
-			this.element.removeClass( 'tm-state-move' );
 		},
 		_setupMoveEvents: function( cellIndex ) {
-			this._on( this.document.find( 'body' ), {
-				'mousemove': function( event ) {
-					var i;
-					if ( this._cachedColumnsRect ) {
-						if ( event.pageX >= this._cachedColumnsRect[0][0] &&
-							event.pageX <= this._cachedColumnsRect[0][1] &&
-							event.pageY >= this._cachedColumnsRect[0][2] &&
-							event.pageY <= this._cachedColumnsRect[0][3]
-						) {
-							for ( i = 1; i < this._cachedColumnsRect.length; i++ ) {
-								if ( event.pageX <= this._cachedColumnsRect[i][1] ) {
-									this._moveindicator.css( {
-										display: 'block',
-										left: this._cachedColumnsRect[i][4]
-									} );
-									break;
-								}
-							}
-						} else {
-							this._moveindicator.css({ display: 'none' });
-						}
-					}
+			this.$document.find( 'body' ).on( {
+				'mousemove.tablemanager': _fixThisOnFunction( this, function( event ) {
+					this._movedragevent( event.pageX, event.pageY );
 					return false;
-				},
-				'mouseup': function( cellIndex ) {
+				} ),
+				'touchmove.tablemanager': _fixThisOnFunction( this, function( event ) {
+					var eventprops = event.originalEvent.targetTouches[0];
+					this._movedragevent( eventprops.pageX, eventprops.pageY );
+					return false;
+				} ),
+				'mouseup.tablemanager': _fixThisOnFunction( this, function( cellIndex ) {
 					return function( event ) {
-						var i;
-						this._off( this.document.find( 'body' ), 'mousemove mouseup' );
-						this._moveindicator.css({ display: 'none' });
-						_removeStyle( this.element[0].id, 'colmove' );
-						if ( this._cachedColumnsRect ) {
-							if ( event.pageX >= this._cachedColumnsRect[0][0] &&
-								event.pageX <= this._cachedColumnsRect[0][1] &&
-								event.pageY >= this._cachedColumnsRect[0][2] &&
-								event.pageY <= this._cachedColumnsRect[0][3]
-							) {
-								for ( i = 1; i < this._cachedColumnsRect.length; i++ ) {
-									if ( event.pageX <= this._cachedColumnsRect[i][1] ) {
-										this.changecolumnvisible( cellIndex, true );
-										this.movecolumn( cellIndex, this._cachedColumnsRect[i][5] );
-										break;
-									}
-								}
-							} else {
-								this.changecolumnvisible( cellIndex, false );
-							}
-						}
-						_applyStyles( this.document[0] );
+						this._enddragevent( event.pageX, event.pageY, cellIndex );
 						return false;
 					};
-				}( cellIndex )
+				}( cellIndex ) ),
+				'touchend.tablemanager': _fixThisOnFunction( this, function( cellIndex ) {
+					return function( event ) {
+						var eventprops = event.originalEvent.changedTouches[0];
+						this._enddragevent( eventprops.pageX, eventprops.pageY, cellIndex );
+						return false;
+					};
+				}( cellIndex ) )
 			} );
+		},
+		_movedragevent: function( posX, posY ) {
+			var i;
+			if ( this._cachedColumnsRect ) {
+				if ( posX >= this._cachedColumnsRect[0][0] &&
+					posX <= this._cachedColumnsRect[0][1] &&
+					posY >= this._cachedColumnsRect[0][2] &&
+					posY <= this._cachedColumnsRect[0][3]
+				) {
+					for ( i = 1; i < this._cachedColumnsRect.length; i++ ) {
+						if ( posX <= this._cachedColumnsRect[i][1] ) {
+							this._moveindicator.css( {
+								display: 'block',
+								left: this._cachedColumnsRect[i][4]
+							} );
+							break;
+						}
+					}
+				} else {
+					this._moveindicator.css({ display: 'none' });
+				}
+			}
+		},
+		_enddragevent: function( posX, posY, cellIndex ) {
+			var i;
+			this.$document.find( 'body' ).off( 'mousemove.tablemanager touchmove.tablemanager mouseup.tablemanager touchend.tablemanager' );
+			this._moveindicator.css({ display: 'none' });
+			_removeStyle( this.$element[0].id, 'colmove' );
+			if ( this._cachedColumnsRect ) {
+				if ( posX >= this._cachedColumnsRect[0][0] &&
+					posX <= this._cachedColumnsRect[0][1] &&
+					posY >= this._cachedColumnsRect[0][2] &&
+					posY <= this._cachedColumnsRect[0][3]
+				) {
+					for ( i = 1; i < this._cachedColumnsRect.length; i++ ) {
+						if ( posX <= this._cachedColumnsRect[i][1] ) {
+							this.changecolumnvisible( cellIndex, true );
+							this.movecolumn( cellIndex, this._cachedColumnsRect[i][5] );
+							break;
+						}
+					}
+				} else {
+					this.changecolumnvisible( cellIndex, false );
+				}
+			}
+			_applyStyles( this.$document[0] );
 		},
 		// Moves a column
 		// - originalIndex: self-explanatory
@@ -385,11 +414,11 @@
 			var i, ncols, row, visible;
 			// There's nothing to do if we move the column before itself or before the next column
 			if ( newIndex == originalIndex || newIndex == originalIndex + 1 ) return;
-			this.element.css('display', 'none');
-			ncols = this.element[0].rows[0].cells.length;
+			this.$element.css('display', 'none');
+			ncols = this.$element[0].rows[0].cells.length;
 			// Mover columnas
-			for ( i = this.element[0].rows.length - 1; i >= 0; i-- ) {
-				row = this.element[0].rows[i];
+			for ( i = this.$element[0].rows.length - 1; i >= 0; i-- ) {
+				row = this.$element[0].rows[i];
 				if ( newIndex >= ncols ) {
 					row.appendChild( row.cells[ originalIndex ] );
 				} else {
@@ -409,50 +438,78 @@
 				}
 			}
 			this._refreshHiddenColumnStyles();
-			_applyStyles( this.document[0] );
-			this.element.css('display', '');
+			_applyStyles( this.$document[0] );
+			this.$element.css('display', '');
 		},
-		// Changes visibility of a column
-		changecolumnvisible: function( originalIndex, visible ) {
-			var i, pos, $clone, $hidden, $hiddenDiv;
+		// Changes visibility of a column or array of columns
+		changecolumnvisible: function( indices, visible ) {
+			var i, pos, $clone, $hidden, $hiddenDiv, originalIndex, ii, doSomething = false;
 			// Shortcut if visibility doesn't change
-			if ( this._columnvisibility[originalIndex] === visible ) return;
-			this.element.css('display', 'none');
-			$hiddenDiv = this._mgrctrl.find( '.tm-hiddencols:eq(0)' );
-			$hidden = $hiddenDiv.find( '>div' );
-			pos = 0;
-			if ( visible ) {
-				// Remove from the list of hidden columns
-				for ( i = 0; i < this._columnvisibility.length; i++ ) {
-					if ( i === originalIndex ) {
-						$hidden.eq( pos ).remove();
-						break;
+			if ( !$.isArray( indices ) ) {
+				indices = [ indices ];
+			}
+			for ( ii = 0; ii < indices.length; ii++ ) {
+				originalIndex = indices[ii];
+				if ( this._columnvisibility[originalIndex] === visible ) continue;
+				if ( !doSomething ) {
+					this.$element.css('display', 'none');
+					doSomething = true;
+					$hiddenDiv = this._mgrctrl.find( '.tm-hiddencols:eq(0)' );
+					$hidden = $hiddenDiv.find( '>div' );
+				}
+				pos = 0;
+				if ( visible ) {
+					// Remove from the list of hidden columns
+					for ( i = 0; i < this._columnvisibility.length; i++ ) {
+						if ( i === originalIndex ) {
+							$hidden.eq( pos ).remove();
+							break;
+						}
+						if ( this._columnvisibility[i] === false ) {
+							pos++;
+						}
 					}
-					if ( this._columnvisibility[i] === false ) {
-						pos++;
+				} else {
+					// Add to the list of hidden columns, at the correct position
+					for ( i = 0; i < this._columnvisibility.length; i++ ) {
+						if ( i === originalIndex ) {
+							$clone = $( '<div tabindex="0"></div>' ).html( $( this.$element[0].rows[0].cells[ originalIndex ] ).html() );
+							if ( $hidden.length > pos ) {
+								$clone.insertBefore( $hidden.eq( pos ) );
+							} else {
+								$clone.appendTo( $hiddenDiv );
+							}
+							break;
+						}
+						if ( this._columnvisibility[i] === false ) {
+							pos++;
+						}
 					}
 				}
-			} else {
-				// Add to the list of hidden columns, at the correct position
-				for ( i = 0; i < this._columnvisibility.length; i++ ) {
-					if ( i === originalIndex ) {
-						$clone = $( '<div>' ).html( $( this.element[0].rows[0].cells[ originalIndex ] ).html() );
-						if ( $hidden.length > pos ) {
-							$clone.insertBefore( $hidden.eq( pos ) );
-						} else {
-							$clone.appendTo( $hiddenDiv );
-						}
-						break;
-					}
-					if ( this._columnvisibility[i] === false ) {
-						pos++;
-					}
+				this._columnvisibility[ originalIndex ] = visible;
+			}
+			if ( !doSomething ) return;
+			this._refreshHiddenColumnStyles();
+			_applyStyles( this.$document[0] );
+			this.$element.css('display', '');
+			// If the scroll changes somehow, sometimes the popup moves
+			if ( this._movetipctrl ) {
+				this._movetipctrl.updateDimensions();
+			}
+		},
+		_rebuildHiddenTip: function() {
+			var i, numhidden = 0;
+			for ( i = 0; i < this._columnvisibility.length; i++ ) {
+				if ( !this._columnvisibility[i] ) {
+					numhidden++;
 				}
 			}
-			this._columnvisibility[ originalIndex ] = visible;
-			this._refreshHiddenColumnStyles();
-			_applyStyles( this.document[0] );
-			this.element.css('display', '');
+			if ( numhidden > 0 ) {
+				if ( !this._hiddencolumnstip ) {
+					this._hiddencolumnstip = $( '<div class="tm-hiddencols-tip"></div>' ).text( _texts.hiddencolsnumber.replace( '$1', numhidden ) ).insertAfter( this._movebtn.$element );
+				}
+				this._hiddencolumnstip.text( _texts.hiddencolsnumber.replace( '$1', numhidden ) ).show();
+			}
 		},
 		// Rebuilds the styles of hidden columns
 		_refreshHiddenColumnStyles: function() {
@@ -465,17 +522,32 @@
 			if ( selector.length ) {
 				rules = {};
 				rules[ selector.join(',') ] = 'display:none;';
-				_addStyle( this.element[0].id, 'hiddencols', rules );
+				_addStyle( this.$element[0].id, 'hiddencols', rules );
 			} else {
-				_removeStyle( this.element[0].id, 'hiddencols' );
+				_removeStyle( this.$element[0].id, 'hiddencols' );
 			}
 		},
 		applyautohide: function() {
+			var toHide;
 			if ( !this.options.autohidecol ) return;
-			if ( $.isArray( this.options.autohidecol ) ) {
+			toHide = this.options.autohidecol.call( this.$element[0] );
+			if ( $.isArray( toHide ) ) {
+				this.changecolumnvisible( toHide, false );
 			}
+			this._rebuildHiddenTip();
 		}
-	});
+	};
 
-}( jQuery ));
+	global.TableManager = function( element, options ) {
+		var that;
+		that = $.extend( true, {}, _tmObject );
+		that.$element = $( element ).eq(0);
+		if ( !that.$element.is( 'table' ) ) return;
+		that.$document = $( document );
+		that.options = $.extend( true, {}, _tmObject.options, options );
+		that._create.call( that );
+		that.$element.data( 'TableManager', that );
+	};
+
+}( jQuery, mw, window ));
 

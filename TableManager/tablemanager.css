@@ -1,14 +1,4 @@
-.tablemanager-control > div.btn {
-  display: inline-block;
-  background: linear-gradient(to bottom,#444 35%,#333 65%);
-  color: #fff;
-  border-radius: 10px;
-  padding: 0.5em 0.8em;
-  margin: 0 0.2em;
-  cursor: pointer;
-}
-
-.tablemanager-control > .tm-extracolumns, .tablemanager-control > .tm-extracolumns-tip {
+.tablemanager-control > .tm-extracolumns {
   display: inline-block;
   margin-left: 1em;
 }
@@ -25,23 +15,21 @@
   cursor: move !important;
 }
 
-.tm-hiddencols > div a, .tm-state-move {
-  cursor: move !important;
+.tablemanager-control > .tm-extracolumns > .tm-hiddencols a {
+    pointer-events: none;
 }
 
-.tablemanager-tip {
-  position: absolute;
-  width: 80%;
-  border: 2px solid #333;
-  border-radius: 20px;
-  background-color: #f8ffaa;
-  padding: 1em;
-  text-align: center;
+.tm-hiddencols > div a, .tm-state-move {
+  cursor: move !important;
 }
 
 .tablemanager-moveindicator {
   position: absolute;
   border: 1px solid #f00;
   transition: left 0.5s;
+}
+
+.tm-hiddencols-tip {
+    display: inline-block;
 }
 
