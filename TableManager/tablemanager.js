@@ -326,8 +326,8 @@
 				this._movetipctrl.toggle( false );
 				this._mgrctrl.find( '>.tm-extracolumns' ).hide();
 			}
-			this.$element.off( 'mousedown.tablemanager click.tablemanager' );
-			this._mgrctrl.find( '.tm-hiddencols:eq(0)' ).off( 'mousedown.tablemanager click.tablemanager' );
+			this.$element.off( 'mousedown.tablemanager touchstart.tablemanager click.tablemanager' );
+			this._mgrctrl.find( '.tm-hiddencols:eq(0)' ).off( 'mousedown.tablemanager touchstart.tablemanager click.tablemanager' );
 			this._movebtn.setLabel( _texts.move );
 			this._rebuildHiddenTip();
 			this.$element.removeClass( 'tm-state-move' );

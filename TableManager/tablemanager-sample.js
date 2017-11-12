@@ -55,6 +55,11 @@
 				}
 			};
 		} );
+		$( 'table.tablemanager' ).each( function() {
+			startupElements[startupElements.length] = {
+				element: this
+			};
+		} );
 
 		if ( startupElements.length > 0 ) {
 			mw.loader.using( [ 'oojs-ui-widgets' ] ).then( function() {
