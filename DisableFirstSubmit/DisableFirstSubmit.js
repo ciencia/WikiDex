@@ -12,9 +12,8 @@
 (function($) {
 	var _dlg = null,
 		_init = function() {
-			$('#wpSave').bind('click', _onSave);
-			// oasis hack
-			$('#wpPreview').add('#wpDiff').bind('click.disablefirstsubmit', _onPreview);
+			$('#wpSave').on('click', _onSave);
+			$('#wpPreview').add('#wpDiff').on('click.disablefirstsubmit', _onPreview);
 		},
 		_onSave = function() {
 			var api, params;
@@ -27,17 +26,17 @@
 					lang: mw.config.get('wgUserLanguage', mw.config.get('wgContentLanguage')),
 					disablepp: ''
 				};
-				api.get(params, { ok: _displayDialog, err: _endError } );
+				api.get(params).done(_displayDialog).fail(_endError);
 			} else {
 				_dlg.dialog('open');
 			}
 			$('#wpSave').attr('disabled', 'disabled');
 			return false;
 		},
-		// oasis hack
 		_onPreview = function() {
-			$('#wpSave').unbind('click', _onSave);
-			$('#wpPreview').add('#wpDiff').unbind('click.disablefirstsubmit');
+			$('#wpSave').off('click', _onSave);
+			$('#wpPreview').add('#wpDiff').off('click.disablefirstsubmit');
+			_end();
 		},
 		_displayDialog = function(data) {
 			if (data.error) {
@@ -52,7 +51,7 @@
 			});
 		},
 		_endError = function() {
-			$('#wpSave').unbind('click', _onSave);
+			$('#wpSave').off('click', _onSave);
 			_end();
 		},
 		_end = function() {
